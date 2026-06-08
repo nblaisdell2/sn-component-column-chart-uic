@@ -1,0 +1,120 @@
+[
+  {
+    "name": "mode",
+    "label": "Mode",
+    "description": "trend (per period, one series per indicator) | latest (one column per indicator) | breakdown (one column per breakdown element).",
+    "fieldType": "string",
+    "defaultValue": "trend"
+  },
+  {
+    "name": "source",
+    "label": "Source",
+    "description": "auto (default) | scores | scorecard. 'scores' reads collected scores from pa_scores; 'scorecard' computes Formula/realtime indicators via the PA scorecard engine; 'auto' tries pa_scores then falls back to the scorecard engine.",
+    "fieldType": "string",
+    "defaultValue": "auto"
+  },
+  {
+    "name": "step",
+    "label": "Step (scorecard period)",
+    "description": "Optional period granularity when computing trends via the scorecard engine (e.g. day, week, month). Leave blank to use the indicator's default.",
+    "fieldType": "string",
+    "defaultValue": ""
+  },
+  {
+    "name": "indicators",
+    "label": "Indicators (sys_ids or names)",
+    "description": "Comma-separated indicator sys_ids or names. Used by 'trend' and 'latest' (each becomes a series / column).",
+    "fieldType": "string",
+    "defaultValue": ""
+  },
+  {
+    "name": "indicator",
+    "label": "Indicator (breakdown mode)",
+    "description": "A single indicator sys_id or name to slice in 'breakdown' mode.",
+    "fieldType": "string",
+    "defaultValue": ""
+  },
+  {
+    "name": "breakdown",
+    "label": "Breakdown (sys_id)",
+    "description": "Breakdown sys_id (from pa_breakdowns) to slice by in 'breakdown' mode.",
+    "fieldType": "string",
+    "defaultValue": ""
+  },
+  {
+    "name": "lastPeriods",
+    "label": "Last N periods (trend)",
+    "description": "How many recent collection periods to show in 'trend' mode (ignored if From/To set).",
+    "fieldType": "number",
+    "defaultValue": 12
+  },
+  {
+    "name": "from",
+    "label": "From date (trend)",
+    "description": "Optional start date (YYYY-MM-DD) for 'trend' mode; overrides Last N periods.",
+    "fieldType": "string",
+    "defaultValue": ""
+  },
+  {
+    "name": "to",
+    "label": "To date (trend)",
+    "description": "Optional end date (YYYY-MM-DD) for 'trend' mode.",
+    "fieldType": "string",
+    "defaultValue": ""
+  },
+  {
+    "name": "seriesName",
+    "label": "Series name (latest/breakdown)",
+    "description": "Name for the single series in 'latest' (default 'Latest') or 'breakdown' (default = indicator name).",
+    "fieldType": "string",
+    "defaultValue": ""
+  },
+  {
+    "name": "colors",
+    "label": "Colors (JSON)",
+    "description": "Optional per-series colors: array [\"#2E93fA\",\"#66DA26\"] by order, or map {\"<series>\":\"#hex\"} by series name.",
+    "fieldType": "string",
+    "defaultValue": ""
+  },
+  {
+    "name": "maxCategories",
+    "label": "Max categories (top-N)",
+    "description": "Optional limit: keep only the top-N categories by total value. Blank = all.",
+    "fieldType": "number"
+  },
+  {
+    "name": "sort",
+    "label": "Category sort",
+    "description": "none (default — chronological for trend) | label-asc | label-desc | value-asc | value-desc.",
+    "fieldType": "string",
+    "defaultValue": "none"
+  },
+  {
+    "name": "dateField",
+    "label": "Advanced: pa_scores date field",
+    "description": "Override the pa_scores date column name (default 'date').",
+    "fieldType": "string",
+    "defaultValue": "date"
+  },
+  {
+    "name": "valueField",
+    "label": "Advanced: pa_scores value field",
+    "description": "Override the pa_scores value column name (default 'value').",
+    "fieldType": "string",
+    "defaultValue": "value"
+  },
+  {
+    "name": "breakdownField",
+    "label": "Advanced: pa_scores breakdown field",
+    "description": "Override the pa_scores breakdown column name (default 'breakdown').",
+    "fieldType": "string",
+    "defaultValue": "breakdown"
+  },
+  {
+    "name": "elementField",
+    "label": "Advanced: pa_scores element field",
+    "description": "Override the pa_scores breakdown-element column name (default 'element').",
+    "fieldType": "string",
+    "defaultValue": "element"
+  }
+]

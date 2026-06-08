@@ -1,0 +1,430 @@
+{
+  "components": {
+    "x-1295779-column-chart-uic": {
+      "innerComponents": [],
+      "uiBuilder": {
+        "associatedTypes": [
+          "global.core",
+          "global.landing-page"
+        ],
+        "label": "D3 Column Chart",
+        "tileIcon": "./tile-icon/generic-tile-icon.svg",
+        "description": "A configurable, multi-series column (bar) chart rendered with D3.js. Restyle it entirely from the property panel and hook into click/hover events.",
+        "category": "primitives"
+      },
+      "properties": [
+        {
+          "name": "chartTitle",
+          "label": "Header & border · Title",
+          "description": "Title rendered above the chart. Leave blank to hide.",
+          "fieldType": "string",
+          "defaultValue": "Tickets by Month"
+        },
+        {
+          "name": "titleFontSize",
+          "label": "Header & border · Title font size",
+          "description": "Font size of the chart title, in pixels.",
+          "fieldType": "number",
+          "defaultValue": 18
+        },
+        {
+          "name": "titleColor",
+          "label": "Header & border · Title color",
+          "description": "Text color of the chart title.",
+          "fieldType": "string",
+          "defaultValue": "#374151"
+        },
+        {
+          "name": "componentWidth",
+          "label": "Header & border · Width",
+          "description": "Outer width of the whole widget. CSS length, e.g. \"50%\", \"640px\". A bare number is treated as pixels.",
+          "fieldType": "string",
+          "defaultValue": "50%"
+        },
+        {
+          "name": "componentPadding",
+          "label": "Header & border · Padding",
+          "description": "Padding around the whole widget. CSS length, e.g. \"12px\", \"1rem\". A bare number is treated as pixels.",
+          "fieldType": "string",
+          "defaultValue": "12px"
+        },
+        {
+          "name": "backgroundColor",
+          "label": "Header & border · Background color",
+          "description": "Chart background. CSS color or \"transparent\".",
+          "fieldType": "string",
+          "defaultValue": "transparent"
+        },
+        {
+          "name": "borderColor",
+          "label": "Header & border · Border color",
+          "description": "Border color of the widget. Leave blank for no border.",
+          "fieldType": "string",
+          "defaultValue": ""
+        },
+        {
+          "name": "borderWidth",
+          "label": "Header & border · Border width",
+          "description": "Border thickness in pixels. 0 = no border.",
+          "fieldType": "number",
+          "defaultValue": 0
+        },
+        {
+          "name": "borderRadius",
+          "label": "Header & border · Border radius",
+          "description": "Rounded corners of the widget, in pixels.",
+          "fieldType": "number",
+          "defaultValue": 0
+        },
+
+        {
+          "name": "series",
+          "label": "Data · Series data",
+          "description": "Array of series, each: { name, color, data: [ { label, value } ] }. Categories come from the first series' labels. Bind to a data resource or leave empty to show built-in sample data.",
+          "fieldType": "json"
+        },
+        {
+          "name": "groupMode",
+          "label": "Data · Column grouping",
+          "description": "How multiple series are laid out.",
+          "fieldType": "choice",
+          "defaultValue": "grouped",
+          "typeMetadata": {
+            "variant": "dropdown",
+            "choices": [
+              { "label": "Grouped (side by side)", "value": "grouped" },
+              { "label": "Stacked", "value": "stacked" }
+            ]
+          }
+        },
+
+        {
+          "name": "chartHeight",
+          "label": "Display · Chart height (px)",
+          "description": "Height of the chart in pixels.",
+          "fieldType": "number",
+          "defaultValue": 360
+        },
+        {
+          "name": "columnPadding",
+          "label": "Display · Column padding",
+          "description": "Gap between columns/groups as a fraction of band width (0 = touching, 0.9 = thin). Range 0-0.95.",
+          "fieldType": "number",
+          "defaultValue": 0.2
+        },
+        {
+          "name": "groupPadding",
+          "label": "Display · Inner group padding (grouped only)",
+          "description": "For grouped mode: gap between bars within a group, as a fraction (0-0.5).",
+          "fieldType": "number",
+          "defaultValue": 0.05
+        },
+        {
+          "name": "cornerRadius",
+          "label": "Display · Corner radius (2D only)",
+          "description": "Rounded top corners of each column, in pixels. Applies in flat (2D) mode only.",
+          "fieldType": "number",
+          "defaultValue": 4
+        },
+        {
+          "name": "bar3D",
+          "label": "Display · 3D columns",
+          "description": "Render columns as extruded 3D bars (with lit top and shaded side faces).",
+          "fieldType": "boolean",
+          "defaultValue": true
+        },
+        {
+          "name": "depth3D",
+          "label": "Display · 3D depth (when 3D on)",
+          "description": "Extrusion depth of the 3D effect, in pixels.",
+          "fieldType": "number",
+          "defaultValue": 10
+        },
+        {
+          "name": "animate",
+          "label": "Display · Animate",
+          "description": "Animate columns growing in on first render and on data change.",
+          "fieldType": "boolean",
+          "defaultValue": true
+        },
+        {
+          "name": "animationDuration",
+          "label": "Display · Animation duration (ms)",
+          "description": "Duration of the grow-in animation in milliseconds.",
+          "fieldType": "number",
+          "defaultValue": 800
+        },
+        {
+          "name": "dropShadow",
+          "label": "Display · Drop shadow",
+          "description": "Apply a soft drop shadow to the columns.",
+          "fieldType": "boolean",
+          "defaultValue": true
+        },
+        {
+          "name": "shadowColor",
+          "label": "Display · Shadow color (when drop shadow on)",
+          "description": "Color of the column drop shadow (supports rgba).",
+          "fieldType": "string",
+          "defaultValue": "rgba(0,0,0,0.25)"
+        },
+        {
+          "name": "shadowBlur",
+          "label": "Display · Shadow blur (when drop shadow on)",
+          "description": "Blur radius of the drop shadow, in pixels.",
+          "fieldType": "number",
+          "defaultValue": 4
+        },
+        {
+          "name": "hoverHighlight",
+          "label": "Display · Hover highlight",
+          "description": "Highlight a column on mouse-over.",
+          "fieldType": "boolean",
+          "defaultValue": true
+        },
+        {
+          "name": "hoverColor",
+          "label": "Display · Hover color (when hover highlight on)",
+          "description": "Color a column turns on hover. Blank = automatically brighten the column's own color.",
+          "fieldType": "string",
+          "defaultValue": ""
+        },
+        {
+          "name": "fontFamily",
+          "label": "Display · Base font family",
+          "description": "CSS font-family for chart text that doesn't have its own family set. Blank = inherit from the page.",
+          "fieldType": "string",
+          "defaultValue": ""
+        },
+
+        {
+          "name": "yAxisLabel",
+          "label": "Y-axis · Title",
+          "description": "Rotated caption beside the y-axis. Leave blank to hide.",
+          "fieldType": "string",
+          "defaultValue": ""
+        },
+        {
+          "name": "yMin",
+          "label": "Y-axis · Minimum",
+          "description": "Fixed y-axis minimum. Leave blank for automatic.",
+          "fieldType": "number"
+        },
+        {
+          "name": "yMax",
+          "label": "Y-axis · Maximum",
+          "description": "Fixed y-axis maximum. Leave blank for automatic. Bars exceeding it are truncated at the top.",
+          "fieldType": "number"
+        },
+        {
+          "name": "yTickCount",
+          "label": "Y-axis · Tick count",
+          "description": "Approximate number of ticks/gridlines on the y-axis.",
+          "fieldType": "number",
+          "defaultValue": 5
+        },
+        {
+          "name": "yAxisFormat",
+          "label": "Y-axis · Label format",
+          "description": "D3 number format specifier for the y-axis tick labels only (e.g. \".0f\", \"$,.0f\", \".0%\"). Blank = default.",
+          "fieldType": "string",
+          "defaultValue": ""
+        },
+        {
+          "name": "showGridlines",
+          "label": "Y-axis · Show gridlines",
+          "description": "Draw horizontal gridlines at each y tick.",
+          "fieldType": "boolean",
+          "defaultValue": true
+        },
+        {
+          "name": "gridColor",
+          "label": "Y-axis · Gridline color",
+          "description": "Color of horizontal gridlines.",
+          "fieldType": "string",
+          "defaultValue": "#e5e7eb"
+        },
+
+        {
+          "name": "xAxisLabel",
+          "label": "X-axis · Title",
+          "description": "Caption beneath the x-axis. Leave blank to hide.",
+          "fieldType": "string",
+          "defaultValue": ""
+        },
+
+        {
+          "name": "axisColor",
+          "label": "Axes · Line color",
+          "description": "Color of the x and y axis lines and tick marks.",
+          "fieldType": "string",
+          "defaultValue": "#6b7280"
+        },
+        {
+          "name": "axisTextColor",
+          "label": "Axes · Text color",
+          "description": "Text color for the x/y axis tick values and the axis titles.",
+          "fieldType": "string",
+          "defaultValue": "#6b7280"
+        },
+        {
+          "name": "axisFontSize",
+          "label": "Axes · Font size",
+          "description": "Font size (px) for the x/y axis tick values and the axis titles.",
+          "fieldType": "number",
+          "defaultValue": 12
+        },
+        {
+          "name": "axisFontFamily",
+          "label": "Axes · Font family",
+          "description": "CSS font-family for the x/y axis tick values and axis titles. Blank = use the base font family.",
+          "fieldType": "string",
+          "defaultValue": ""
+        },
+
+        {
+          "name": "showLegend",
+          "label": "Legend · Show legend",
+          "description": "Show a legend of series names with color swatches.",
+          "fieldType": "boolean",
+          "defaultValue": true
+        },
+        {
+          "name": "legendPosition",
+          "label": "Legend · Position",
+          "description": "Where to place the legend.",
+          "fieldType": "choice",
+          "defaultValue": "bottom",
+          "typeMetadata": {
+            "variant": "dropdown",
+            "choices": [
+              { "label": "Top", "value": "top" },
+              { "label": "Right", "value": "right" },
+              { "label": "Bottom", "value": "bottom" }
+            ]
+          }
+        },
+        {
+          "name": "legendFontSize",
+          "label": "Legend · Font size",
+          "description": "Font size (px) for the legend text.",
+          "fieldType": "number",
+          "defaultValue": 12
+        },
+
+        {
+          "name": "showValueLabels",
+          "label": "Data label · Show data labels",
+          "description": "Draw the numeric value inside each column.",
+          "fieldType": "boolean",
+          "defaultValue": true
+        },
+        {
+          "name": "valueLabelFormat",
+          "label": "Data label · Label format",
+          "description": "D3 number format specifier for the column value labels only (e.g. \".0f\", \",.1f\", \"$,.0f\", \".2%\"). Blank = default.",
+          "fieldType": "string",
+          "defaultValue": ""
+        },
+        {
+          "name": "labelFontSize",
+          "label": "Data label · Font size",
+          "description": "Font size (px) for the value labels drawn inside the columns.",
+          "fieldType": "number",
+          "defaultValue": 12
+        },
+
+        {
+          "name": "showTooltip",
+          "label": "Tooltip · Show tooltip",
+          "description": "Show a hover tooltip when the pointer is over a column.",
+          "fieldType": "boolean",
+          "defaultValue": true
+        },
+        {
+          "name": "tooltipTemplate",
+          "label": "Tooltip · Template",
+          "description": "Tooltip content (light HTML allowed). Tokens: {label}, {value}, {formattedValue}, {seriesName}, {seriesIndex}, {categoryIndex}, {percent} (of category total), {swatch} (a colored dot matching the series), {color} (the series color string), and any custom key on the data point (e.g. {owner}). Interpolated values are HTML-escaped; {swatch} renders a colored dot.",
+          "fieldType": "string",
+          "defaultValue": "<strong>{label}</strong><br/>{swatch}{seriesName}: {formattedValue}"
+        },
+        {
+          "name": "tooltipFollowCursor",
+          "label": "Tooltip · Follow cursor",
+          "description": "Tooltip follows the pointer. Turn off to anchor it above the hovered column.",
+          "fieldType": "boolean",
+          "defaultValue": true
+        },
+        {
+          "name": "tooltipBackground",
+          "label": "Tooltip · Background color",
+          "description": "Tooltip background (CSS color, supports rgba).",
+          "fieldType": "string",
+          "defaultValue": "rgba(17,24,39,0.92)"
+        },
+        {
+          "name": "tooltipTextColor",
+          "label": "Tooltip · Text color",
+          "description": "Tooltip text color.",
+          "fieldType": "string",
+          "defaultValue": "#ffffff"
+        },
+        {
+          "name": "tooltipFontSize",
+          "label": "Tooltip · Font size",
+          "description": "Tooltip font size, in pixels.",
+          "fieldType": "number",
+          "defaultValue": 12
+        },
+
+        {
+          "name": "useSeriesColors",
+          "label": "Colors · Use per-series colors",
+          "description": "Use each series' own 'color' field when present. Falls back to the palette otherwise.",
+          "fieldType": "boolean",
+          "defaultValue": true
+        },
+        {
+          "name": "colorPalette",
+          "label": "Colors · Color palette",
+          "description": "JSON array of CSS colors used per series when 'Use per-series colors' is off, e.g. [\"#2E93fA\",\"#66DA26\"].",
+          "fieldType": "json"
+        }
+      ],
+      "actions": [
+        {
+          "name": "CHART_CLICKED",
+          "label": "Chart clicked",
+          "description": "Fired when the user clicks anywhere on the chart (not on a specific column).",
+          "payload": [
+            { "name": "seriesCount", "label": "Number of series", "description": "How many series are currently rendered." },
+            { "name": "categoryCount", "label": "Number of categories", "description": "How many categories (x-axis groups) are rendered." }
+          ]
+        },
+        {
+          "name": "COLUMN_CLICKED",
+          "label": "Column clicked",
+          "description": "Fired when the user clicks an individual column. Use to drill into details for that data point.",
+          "payload": [
+            { "name": "seriesName", "label": "Series name", "description": "Name of the series the column belongs to." },
+            { "name": "label", "label": "Category label", "description": "The category (x-axis) label of the column." },
+            { "name": "value", "label": "Value", "description": "The numeric value of the column." },
+            { "name": "seriesIndex", "label": "Series index", "description": "Zero-based index of the series." },
+            { "name": "categoryIndex", "label": "Category index", "description": "Zero-based index of the category." }
+          ]
+        },
+        {
+          "name": "COLUMN_HOVERED",
+          "label": "Column hovered",
+          "description": "Fired when the user hovers a column. Useful for syncing external tooltips or details panels.",
+          "payload": [
+            { "name": "seriesName", "label": "Series name", "description": "Name of the series the column belongs to." },
+            { "name": "label", "label": "Category label", "description": "The category (x-axis) label of the column." },
+            { "name": "value", "label": "Value", "description": "The numeric value of the column." }
+          ]
+        }
+      ]
+    }
+  },
+  "scopeName": "x_1295779_column_0"
+}

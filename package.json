@@ -1,0 +1,27 @@
+{
+  "name": "column-chart-uic",
+  "version": "0.0.1",
+  "private": false,
+  "description": "Configurable D3 column chart for UI Builder",
+  "keywords": [
+    "ServiceNow",
+    "Next Experience UI Component",
+    "column-chart-uic"
+  ],
+  "readme": "./README.md",
+  "engines": {
+    "node": ">=22"
+  },
+  "module": "src/index.js",
+  "dependencies": {
+    "@servicenow/sass-kit": "latest",
+    "@servicenow/ui-core": "24.1.1",
+    "@servicenow/ui-renderer-snabbdom": "24.1.1",
+    "d3": "^7.9.0"
+  },
+  "devDependencies": {
+    "@babel/runtime": "7.25.7",
+    "ajv": "^6.12.6",
+    "sass": "1.53.0"
+  }
+}

@@ -1,0 +1,80 @@
+[
+  {
+    "name": "table",
+    "label": "Table",
+    "description": "Table to query, e.g. 'incident'.",
+    "fieldType": "string",
+    "mandatory": true,
+    "defaultValue": "incident"
+  },
+  {
+    "name": "filter",
+    "label": "Filter (encoded query)",
+    "description": "Optional encoded query to scope the rows, e.g. 'active=true^priority<=2'.",
+    "fieldType": "string",
+    "defaultValue": ""
+  },
+  {
+    "name": "categoryField",
+    "label": "Category field (x-axis)",
+    "description": "Field to group by for the x-axis categories, e.g. 'priority'.",
+    "fieldType": "string",
+    "mandatory": true,
+    "defaultValue": "priority"
+  },
+  {
+    "name": "seriesField",
+    "label": "Series field (optional split)",
+    "description": "Optional second field to split into multiple series, e.g. 'state'. Blank = a single series.",
+    "fieldType": "string",
+    "defaultValue": ""
+  },
+  {
+    "name": "metric",
+    "label": "Metric",
+    "description": "Aggregation: count | sum | avg | min | max. Default 'count'.",
+    "fieldType": "string",
+    "defaultValue": "count"
+  },
+  {
+    "name": "valueField",
+    "label": "Value field",
+    "description": "Numeric field to aggregate (required when metric is not 'count'), e.g. 'business_duration'.",
+    "fieldType": "string",
+    "defaultValue": ""
+  },
+  {
+    "name": "seriesName",
+    "label": "Series name (single-series)",
+    "description": "Name for the single series when no Series field is set. Default = the metric label.",
+    "fieldType": "string",
+    "defaultValue": ""
+  },
+  {
+    "name": "useDisplayValue",
+    "label": "Use display values for labels",
+    "description": "Group/label by display value (readable) instead of raw value.",
+    "fieldType": "boolean",
+    "defaultValue": true
+  },
+  {
+    "name": "colors",
+    "label": "Colors (JSON)",
+    "description": "Optional per-series colors: a JSON array [\"#2E93fA\",\"#66DA26\"] applied by order, or a map {\"Resolved\":\"#66DA26\"} keyed by series name.",
+    "fieldType": "string",
+    "defaultValue": ""
+  },
+  {
+    "name": "maxCategories",
+    "label": "Max categories (top-N)",
+    "description": "Optional limit: keep only the top-N categories by total value. Blank = all.",
+    "fieldType": "number"
+  },
+  {
+    "name": "sort",
+    "label": "Category sort",
+    "description": "Order categories: none (query order), label-asc, label-desc, value-asc, value-desc.",
+    "fieldType": "string",
+    "defaultValue": "none"
+  }
+]
