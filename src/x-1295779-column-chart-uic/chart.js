@@ -28,8 +28,29 @@ const num = (v, fallback) => {
 
 const isBlank = (v) => v === undefined || v === null || v === '';
 
-/** SVG path for a rectangle whose TOP corners are rounded by radius r. */
-const roundedTopRect = (x, y, w, h, r) => {
+/**
+ * SVG path for a rectangle with the corners on ONE edge rounded by radius r.
+ * `side='top'` rounds the top two corners (the growing end of a vertical column);
+ * `side='right'` rounds the right two corners (the growing end of a horizontal bar).
+ * The opposite edge stays square so segments butt flush against the baseline / each
+ * other in stacked mode.
+ */
+const roundedRect = (x, y, w, h, r, side) => {
+	if (side === 'right') {
+		const rr = Math.max(0, Math.min(r, h / 2, w));
+		if (rr <= 0 || w <= 0) {
+			return `M${x},${y}h${w}v${h}h${-w}z`;
+		}
+		return (
+			`M${x},${y}` +
+			`h${w - rr}` +
+			`a${rr},${rr} 0 0 1 ${rr},${rr}` +
+			`v${h - 2 * rr}` +
+			`a${rr},${rr} 0 0 1 ${-rr},${rr}` +
+			`h${-(w - rr)}` +
+			`z`
+		);
+	}
 	const rr = Math.max(0, Math.min(r, w / 2, h));
 	if (rr <= 0 || h <= 0) {
 		return `M${x},${y}h${w}v${h}h${-w}z`;
@@ -49,6 +70,11 @@ export function drawChart(container, props, dispatch) {
 	// ----- normalize props (values may arrive as strings from the panel) -----
 	const series = Array.isArray(props.series) ? props.series.filter((s) => s && Array.isArray(s.data)) : [];
 	const groupMode = props.groupMode === 'stacked' ? 'stacked' : 'grouped';
+	// vertical = columns (default); horizontal = bars. The renderer treats one axis
+	// as the "category" axis (scaleBand) and the other as the "value" axis
+	// (scaleLinear); orientation decides which is which.
+	const orientation = props.orientation === 'horizontal' ? 'horizontal' : 'vertical';
+	const horizontal = orientation === 'horizontal';
 	const palette = Array.isArray(props.colorPalette) && props.colorPalette.length
 		? props.colorPalette
 		: ['#2E93fA', '#66DA26', '#546E7A', '#E91E63', '#FF9800', '#9C27B0'];
@@ -187,9 +213,19 @@ export function drawChart(container, props, dispatch) {
 
 	// ----- layout margins (depend on which decorations are shown) -----
 	const margin = { top: 12, right: 16, bottom: Math.max(24, axisFontSize + 12), left: Math.max(48, axisFontSize * 3) };
+	if (horizontal) {
+		// category labels move to the left axis and can be long, so size the left
+		// margin to the widest label (capped) instead of the value-tick width.
+		const longestCat = categories.reduce((m, c) => Math.max(m, String(c).length), 0);
+		margin.left = Math.max(48, Math.min(220, Math.round(longestCat * axisFontSize * 0.6) + 18));
+	}
 	if (chartTitle) margin.top += titleFontSize + 22; // extra breathing room below the title
-	if (xAxisLabel) margin.bottom += axisFontSize + 10;
-	if (yAxisLabel) margin.left += axisFontSize + 8;
+	// xAxisLabel titles the category axis, yAxisLabel the value axis. Each follows its
+	// axis to the bottom or left depending on orientation.
+	const catTitleOnLeft = horizontal;
+	const valTitleOnLeft = !horizontal;
+	if (xAxisLabel) { if (catTitleOnLeft) margin.left += axisFontSize + 8; else margin.bottom += axisFontSize + 10; }
+	if (yAxisLabel) { if (valTitleOnLeft) margin.left += axisFontSize + 8; else margin.bottom += axisFontSize + 10; }
 
 	const legendRowH = legendFontSize + 12;
 	const legendItemW = (name) => 18 + name.length * (legendFontSize * 0.62) + 16;
@@ -204,7 +240,11 @@ export function drawChart(container, props, dispatch) {
 	const plot = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
 
 	// ----- scales -----
-	const x0 = scaleBand().domain(categories).range([0, innerW]).paddingInner(columnPadding).paddingOuter(columnPadding / 2);
+	// x0/x1 are the category + grouped-sub scales; they run across innerW for vertical
+	// columns and down innerH for horizontal bars. `y` is the value scale and runs the
+	// other way (up for columns, rightward for bars).
+	const catExtent = horizontal ? innerH : innerW;
+	const x0 = scaleBand().domain(categories).range([0, catExtent]).paddingInner(columnPadding).paddingOuter(columnPadding / 2);
 	const x1 = scaleBand().domain(seriesNames).range([0, x0.bandwidth()]).padding(groupPadding);
 
 	// y domain
@@ -226,28 +266,52 @@ export function drawChart(container, props, dispatch) {
 	const yHi = isBlank(props.yMax) ? dataMax || 1 : num(props.yMax, dataMax || 1);
 	// clamp(true) truncates bars at the axis bounds instead of letting them run off
 	// the chart when a value exceeds the configured maximum.
-	const y = scaleLinear().domain([yLo, yHi]).range([innerH, 0]).clamp(true);
+	const y = scaleLinear().domain([yLo, yHi]).range(horizontal ? [0, innerW] : [innerH, 0]).clamp(true);
 	// Only round the domain to "nice" values when the bound is automatic; respect an
 	// explicitly configured min/max exactly so the truncation lands on the set value.
 	if (isBlank(props.yMin) && isBlank(props.yMax)) y.nice(yTickCount);
 
 	// ----- gridlines -----
+	// Gridlines run perpendicular to the value axis: horizontal lines for columns,
+	// vertical lines for bars (drawn from the bottom value-axis upward across innerH).
 	if (showGridlines) {
-		plot.append('g')
-			.attr('class', 'cc-grid')
-			.call(axisLeft(y).ticks(yTickCount).tickSize(-innerW).tickFormat(''))
-			.call((g) => g.select('.domain').remove())
+		const grid = plot.append('g').attr('class', 'cc-grid');
+		if (horizontal) {
+			grid.attr('transform', `translate(0,${innerH})`)
+				.call(axisBottom(y).ticks(yTickCount).tickSize(-innerH).tickFormat(''));
+		} else {
+			grid.call(axisLeft(y).ticks(yTickCount).tickSize(-innerW).tickFormat(''));
+		}
+		grid.call((g) => g.select('.domain').remove())
 			.call((g) => g.selectAll('line').attr('stroke', gridColor).attr('stroke-dasharray', '2,2'));
 	}
 
 	// ----- axes -----
-	const xAxis = plot.append('g')
-		.attr('class', 'cc-axis cc-axis-x')
-		.attr('transform', `translate(0,${y(Math.max(yLo, 0))})`)
-		.call(axisBottom(x0).tickSizeOuter(0));
-	const yAxis = plot.append('g')
-		.attr('class', 'cc-axis cc-axis-y')
-		.call(axisLeft(y).ticks(yTickCount).tickFormat(yFmt));
+	// xAxis = category axis, yAxis = value axis (kept semantic so styling + axis-title
+	// code is orientation-agnostic). Vertical: categories on the bottom at the value
+	// baseline, values on the left. Horizontal: categories on the left at the value
+	// baseline, values along the bottom.
+	const valZero = y(Math.max(yLo, 0));
+	let xAxis;
+	let yAxis;
+	if (horizontal) {
+		xAxis = plot.append('g')
+			.attr('class', 'cc-axis cc-axis-x')
+			.attr('transform', `translate(${valZero},0)`)
+			.call(axisLeft(x0).tickSizeOuter(0));
+		yAxis = plot.append('g')
+			.attr('class', 'cc-axis cc-axis-y')
+			.attr('transform', `translate(0,${innerH})`)
+			.call(axisBottom(y).ticks(yTickCount).tickFormat(yFmt));
+	} else {
+		xAxis = plot.append('g')
+			.attr('class', 'cc-axis cc-axis-x')
+			.attr('transform', `translate(0,${valZero})`)
+			.call(axisBottom(x0).tickSizeOuter(0));
+		yAxis = plot.append('g')
+			.attr('class', 'cc-axis cc-axis-y')
+			.call(axisLeft(y).ticks(yTickCount).tickFormat(yFmt));
+	}
 
 	[xAxis, yAxis].forEach((axis) => {
 		axis.selectAll('path,line').attr('stroke', axisColor); // axis line color
@@ -307,19 +371,39 @@ export function drawChart(container, props, dispatch) {
 	const topShade = (c) => { const col = color(c); return col ? col.brighter(0.5).toString() : c; };
 	const sideShade = (c) => { const col = color(c); return col ? col.darker(0.7).toString() : c; };
 
-	// Build the front/top/side face paths for a given grown pixel height hh (>= 0).
-	const facePaths = (d, hh) => {
-		const x = d.bx;
-		const w = d.bw;
-		const growsUp = d.pyTop <= d.pyBase;
-		const top = growsUp ? d.pyBase - hh : d.pyBase;
+	// Build the front/top/side face paths for a given grown value-axis length `len`
+	// (>= 0). bx/bw are the bar's extent along the CATEGORY axis; pyBase/pyTop are its
+	// base/end pixels along the VALUE axis. We resolve those into the front-face
+	// rectangle (rx,ry,rw,rh), then the 3D top/side faces share one isometric
+	// up-right depth offset so both orientations read as the same solid.
+	const facePaths = (d, len) => {
 		const dep = depthFor(d);
+		let rx;
+		let ry;
+		let rw;
+		let rh;
+		let roundSide;
+		if (horizontal) {
+			const growsRight = d.pyTop >= d.pyBase;
+			rx = growsRight ? d.pyBase : d.pyBase - len;
+			ry = d.bx;
+			rw = len;
+			rh = d.bw;
+			roundSide = 'right';
+		} else {
+			const growsUp = d.pyTop <= d.pyBase;
+			rx = d.bx;
+			ry = growsUp ? d.pyBase - len : d.pyBase;
+			rw = d.bw;
+			rh = len;
+			roundSide = 'top';
+		}
 		return {
 			front: bar3D
-				? `M${x},${top}h${w}v${hh}h${-w}z`
-				: roundedTopRect(x, top, w, hh, d.isTopSegment ? cornerRadius : 0),
-			top: `M${x},${top}l${dep},${-dep}h${w}l${-dep},${dep}z`,
-			side: `M${x + w},${top}l${dep},${-dep}v${hh}l${-dep},${dep}z`
+				? `M${rx},${ry}h${rw}v${rh}h${-rw}z`
+				: roundedRect(rx, ry, rw, rh, d.isTopSegment ? cornerRadius : 0, roundSide),
+			top: `M${rx},${ry}l${dep},${-dep}h${rw}l${-dep},${dep}z`,
+			side: `M${rx + rw},${ry}l${dep},${-dep}v${rh}l${-dep},${dep}z`
 		};
 	};
 	const paintGroup = (g, d, hh) => {
@@ -391,6 +475,12 @@ export function drawChart(container, props, dispatch) {
 			x = event.clientX - rect.left + 14;
 			yTop = event.clientY - rect.top + 14;
 			if (yTop + th > rect.height) { yTop = event.clientY - rect.top - th - 14; }
+		} else if (horizontal) {
+			// anchor just past the bar's value end, vertically centered on the bar
+			const valEnd = margin.left + Math.max(d.pyBase, d.pyTop) + (bar3D ? depthFor(d) : 0);
+			const cy = margin.top + d.bx + d.bw / 2 - (bar3D ? depthFor(d) / 2 : 0);
+			x = valEnd + 10;
+			yTop = cy - th / 2;
 		} else {
 			const cx = margin.left + d.bx + d.bw / 2 + (bar3D ? depthFor(d) / 2 : 0);
 			const barTop = margin.top + Math.min(d.pyTop, d.pyBase) - (bar3D ? depthFor(d) : 0);
@@ -417,12 +507,22 @@ export function drawChart(container, props, dispatch) {
 		.attr('aria-label', (d) => `${d.seriesName}, ${d.label}: ${fmt(d.value)}`)
 		.style('cursor', 'pointer');
 
-	// face elements, in paint order: side, front, then top cap on top
+	// Face elements, painted back-to-front. The "wall" runs the bar's full value-axis
+	// length on every segment; the brighter end "cap" only closes the value end (the
+	// top segment in stacked mode). Vertical: wall = right side, cap = top. Horizontal:
+	// wall = top, cap = right side. The cc-face-top/-side classes keep their shading so
+	// hover recolor stays orientation-agnostic.
 	groups.each(function (d) {
 		const g = select(this);
-		if (bar3D) g.append('path').attr('class', 'cc-face-side').attr('fill', sideShade(d.color));
+		if (bar3D) {
+			if (horizontal) g.append('path').attr('class', 'cc-face-top').attr('fill', topShade(d.color));
+			else g.append('path').attr('class', 'cc-face-side').attr('fill', sideShade(d.color));
+		}
 		g.append('path').attr('class', 'cc-face-front').attr('fill', d.color);
-		if (bar3D && d.isTopSegment) g.append('path').attr('class', 'cc-face-top').attr('fill', topShade(d.color));
+		if (bar3D && d.isTopSegment) {
+			if (horizontal) g.append('path').attr('class', 'cc-face-side').attr('fill', sideShade(d.color));
+			else g.append('path').attr('class', 'cc-face-top').attr('fill', topShade(d.color));
+		}
 	});
 
 	groups
@@ -476,9 +576,10 @@ export function drawChart(container, props, dispatch) {
 			// skip segments too short to hold the text (incl. ones truncated by the max)
 			.data(bars.filter((b) => b.value !== 0 && Math.abs(b.pyBase - b.pyTop) >= labelFontSize + 2))
 			.join('text')
-			// centered inside each segment's front face so stacked values stay in their own block
-			.attr('x', (d) => d.bx + d.bw / 2)
-			.attr('y', (d) => (Math.min(d.pyTop, d.pyBase) + Math.max(d.pyTop, d.pyBase)) / 2)
+			// centered inside each segment's front face so stacked values stay in their own
+			// block; the category axis and value axis swap with orientation.
+			.attr('x', (d) => (horizontal ? (d.pyBase + d.pyTop) / 2 : d.bx + d.bw / 2))
+			.attr('y', (d) => (horizontal ? d.bx + d.bw / 2 : (d.pyBase + d.pyTop) / 2))
 			.attr('text-anchor', 'middle')
 			.attr('dominant-baseline', 'central')
 			.attr('fill', (d) => autoContrast(d.color))
@@ -508,11 +609,15 @@ export function drawChart(container, props, dispatch) {
 	}
 
 	// ----- axis titles -----
-	// bottomCursor walks down the area beneath the plot: first the x-axis tick
-	// labels, then the x-axis title (close to the data), then the bottom legend.
+	// xAxisLabel titles the category axis, yAxisLabel the value axis. Each renders on
+	// the physical side its axis occupies: vertical → categories bottom / values left;
+	// horizontal → categories left / values bottom. bottomCursor walks down the area
+	// beneath the plot (past the value/category tick labels) before the bottom legend.
 	const plotBottom = margin.top + innerH;
-	let bottomCursor = plotBottom + Math.max(20, axisFontSize + 8); // just past the x-axis tick labels
-	if (xAxisLabel) {
+	let bottomCursor = plotBottom + Math.max(20, axisFontSize + 8);
+	const bottomTitle = horizontal ? yAxisLabel : xAxisLabel;
+	const leftTitle = horizontal ? xAxisLabel : yAxisLabel;
+	if (bottomTitle) {
 		svg.append('text')
 			.attr('class', 'cc-axis-title')
 			.attr('x', margin.left + innerW / 2)
@@ -521,10 +626,10 @@ export function drawChart(container, props, dispatch) {
 			.attr('fill', axisTextColor)
 			.style('font-size', `${axisFontSize}px`)
 			.style('font-family', axisFontFamily)
-			.text(xAxisLabel);
+			.text(bottomTitle);
 		bottomCursor += axisFontSize + 14; // clear gap before the legend row
 	}
-	if (yAxisLabel) {
+	if (leftTitle) {
 		svg.append('text')
 			.attr('class', 'cc-axis-title')
 			.attr('transform', `translate(${14},${margin.top + innerH / 2}) rotate(-90)`)
@@ -532,7 +637,7 @@ export function drawChart(container, props, dispatch) {
 			.attr('fill', axisTextColor)
 			.style('font-size', `${axisFontSize}px`)
 			.style('font-family', axisFontFamily)
-			.text(yAxisLabel);
+			.text(leftTitle);
 	}
 
 	// ----- legend -----

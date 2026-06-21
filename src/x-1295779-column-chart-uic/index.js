@@ -65,6 +65,7 @@ createCustomElement('x-1295779-column-chart-uic', {
 	properties: {
 		series: { default: SAMPLE_SERIES },
 		groupMode: { default: 'grouped' },
+		orientation: { default: 'vertical' },
 		componentWidth: { default: '50%' },
 		componentPadding: { default: '12px' },
 		borderColor: { default: '' },

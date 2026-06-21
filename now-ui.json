@@ -97,6 +97,20 @@
             ]
           }
         },
+        {
+          "name": "orientation",
+          "label": "Data · Orientation",
+          "description": "Draw vertical columns or horizontal bars. Horizontal is better for long category labels.",
+          "fieldType": "choice",
+          "defaultValue": "vertical",
+          "typeMetadata": {
+            "variant": "dropdown",
+            "choices": [
+              { "label": "Vertical (columns)", "value": "vertical" },
+              { "label": "Horizontal (bars)", "value": "horizontal" }
+            ]
+          }
+        },
 
         {
           "name": "chartHeight",
