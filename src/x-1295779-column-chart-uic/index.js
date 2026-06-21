@@ -50,6 +50,11 @@ const render = ({ host, properties, dispatch }) => {
 	host._ccLast = { container, props: effectiveProps, dispatch };
 	try {
 		drawChart(container, effectiveProps, dispatch);
+		// Record the width we just drew at so the ResizeObserver can distinguish a real
+		// resize from its own initial/no-op callback — that callback would otherwise
+		// repaint with animation off and snap the grow-in straight to its end state
+		// (visible on a live page, which has no post-load property changes to re-animate).
+		host._ccWidth = container.getBoundingClientRect().width || container.clientWidth || 0;
 	} catch (e) {
 		// Safety net: surface a render failure instead of failing silently.
 		container.textContent = `Chart error: ${e && e.message ? e.message : String(e)}`;
@@ -151,9 +156,16 @@ createCustomElement('x-1295779-column-chart-uic', {
 			if (typeof ResizeObserver !== 'undefined' && !host._ccResizeObserver) {
 				const ro = new ResizeObserver(() => {
 					const last = host._ccLast;
-					if (last && last.container) {
-						drawChart(last.container, { ...last.props, animate: false }, last.dispatch);
-					}
+					if (!last || !last.container) return;
+					const w = last.container.getBoundingClientRect().width || last.container.clientWidth || 0;
+					const prevW = host._ccWidth || 0;
+					// Only redraw on a genuine width change. observe() fires an initial
+					// no-op callback; ignoring it (and height-only changes) keeps the
+					// initial grow-in animation from being snapped to its end state.
+					if (Math.abs(w - prevW) < 1) return;
+					const wasUnsized = prevW < 1; // first real width after a 0-width initial measure
+					host._ccWidth = w;
+					drawChart(last.container, { ...last.props, animate: wasUnsized ? last.props.animate : false }, last.dispatch);
 				});
 				const target = getContainer(host);
 				if (target) {
