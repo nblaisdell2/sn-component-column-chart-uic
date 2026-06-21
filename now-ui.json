@@ -281,6 +281,20 @@
           "defaultValue": ""
         },
         {
+          "name": "hoverDimOthers",
+          "label": "Display · Dim others on hover",
+          "description": "Fade the other columns when hovering one, so the hovered column stands out.",
+          "fieldType": "boolean",
+          "defaultValue": false
+        },
+        {
+          "name": "barCornerRadius3D",
+          "label": "Display · Rounded corners in 3D",
+          "description": "Apply the corner radius to the column fronts even in 3D mode (off = square 3D fronts). Needs Corner radius > 0.",
+          "fieldType": "boolean",
+          "defaultValue": false
+        },
+        {
           "name": "fontFamily",
           "label": "Display · Base font family",
           "description": "CSS font-family for chart text that doesn't have its own family set. Blank = inherit from the page.",
@@ -310,9 +324,22 @@
         {
           "name": "yTickCount",
           "label": "Y-axis · Tick count",
-          "description": "Approximate number of ticks/gridlines on the y-axis.",
+          "description": "Approximate number of ticks/gridlines on the y-axis. Ignored when Explicit tick values is set.",
           "fieldType": "number",
           "defaultValue": 5
+        },
+        {
+          "name": "yAxisTickValues",
+          "label": "Y-axis · Explicit tick values",
+          "description": "JSON array of numbers for exact y-axis ticks/gridlines, e.g. [0, 25, 50, 75, 100]. Overrides Tick count. Blank = automatic.",
+          "fieldType": "json"
+        },
+        {
+          "name": "clampOverflowIndicator",
+          "label": "Y-axis · Mark clipped bars",
+          "description": "Draw a small zigzag 'torn edge' on bars cut off by an explicit Minimum/Maximum, signaling the value extends beyond the axis.",
+          "fieldType": "boolean",
+          "defaultValue": false
         },
         {
           "name": "yAxisFormat",
@@ -558,6 +585,21 @@
               { "label": "Dark2", "value": "dark2" },
               { "label": "Pastel1", "value": "pastel1" },
               { "label": "Accent", "value": "accent" }
+            ]
+          }
+        },
+        {
+          "name": "barFillStyle",
+          "label": "Colors · Bar fill style",
+          "description": "How each bar is filled: Solid color, a Gradient along the bar, or a colorblind-friendly Pattern (series color plus a texture that varies per series).",
+          "fieldType": "choice",
+          "defaultValue": "solid",
+          "typeMetadata": {
+            "variant": "dropdown",
+            "choices": [
+              { "label": "Solid", "value": "solid" },
+              { "label": "Gradient", "value": "gradient" },
+              { "label": "Pattern (texture)", "value": "pattern" }
             ]
           }
         },

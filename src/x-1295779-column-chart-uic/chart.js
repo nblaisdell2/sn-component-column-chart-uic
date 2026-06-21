@@ -149,6 +149,16 @@ export function drawChart(container, props, dispatch) {
 	const minBarHeight = Math.max(0, num(props.minBarHeight, 0)); // px floor (grouped only)
 	const valueLabelPosition = ['inside', 'above', 'none'].includes(props.valueLabelPosition) ? props.valueLabelPosition : 'inside';
 	const showXGridlines = props.showXGridlines === true;
+	// bar fill style (solid | gradient | pattern); 3D front rounding; hover dim; clamp marker
+	const barFillStyle = ['solid', 'gradient', 'pattern'].includes(props.barFillStyle) ? props.barFillStyle : 'solid';
+	const barCornerRadius3D = props.barCornerRadius3D === true;
+	const hoverDimOthers = props.hoverDimOthers === true;
+	const clampOverflowIndicator = props.clampOverflowIndicator === true;
+	// explicit value-axis ticks override the approximate yTickCount when provided
+	const yAxisTickValues = Array.isArray(props.yAxisTickValues)
+		? props.yAxisTickValues.map((v) => num(v, NaN)).filter((v) => Number.isFinite(v))
+		: [];
+	const hasYTickVals = yAxisTickValues.length > 0;
 	// reference line: a number, or 'avg'/'mean' to auto-draw the mean of the (visible) data
 	const refColor = props.referenceLineColor || '#ef4444';
 	const refLabel = props.referenceLineLabel || '';
@@ -406,6 +416,9 @@ export function drawChart(container, props, dispatch) {
 		valBase = Math.max(yLo, 0);
 	}
 
+	// Value-axis ticks: explicit yAxisTickValues when given, else the approximate count.
+	const valueTicks = (gen) => (hasYTickVals ? gen.tickValues(yAxisTickValues) : gen.ticks(yTickCount));
+
 	// ----- gridlines -----
 	// Gridlines run perpendicular to the value axis: horizontal lines for columns,
 	// vertical lines for bars (drawn from the bottom value-axis upward across innerH).
@@ -413,9 +426,9 @@ export function drawChart(container, props, dispatch) {
 		const grid = plot.append('g').attr('class', 'cc-grid');
 		if (horizontal) {
 			grid.attr('transform', `translate(0,${innerH})`)
-				.call(axisBottom(y).ticks(yTickCount).tickSize(-innerH).tickFormat(''));
+				.call(valueTicks(axisBottom(y)).tickSize(-innerH).tickFormat(''));
 		} else {
-			grid.call(axisLeft(y).ticks(yTickCount).tickSize(-innerW).tickFormat(''));
+			grid.call(valueTicks(axisLeft(y)).tickSize(-innerW).tickFormat(''));
 		}
 		grid.call((g) => g.select('.domain').remove())
 			.call((g) => g.selectAll('line').attr('stroke', gridColor).attr('stroke-dasharray', '2,2'));
@@ -460,7 +473,7 @@ export function drawChart(container, props, dispatch) {
 		yAxis = plot.append('g')
 			.attr('class', 'cc-axis cc-axis-y')
 			.attr('transform', `translate(0,${innerH})`)
-			.call(axisBottom(y).ticks(yTickCount).tickFormat(yFmt));
+			.call(valueTicks(axisBottom(y)).tickFormat(yFmt));
 	} else {
 		xAxis = plot.append('g')
 			.attr('class', 'cc-axis cc-axis-x')
@@ -468,7 +481,7 @@ export function drawChart(container, props, dispatch) {
 			.call(axisBottom(x0).tickValues(catTickVals).tickSizeOuter(0));
 		yAxis = plot.append('g')
 			.attr('class', 'cc-axis cc-axis-y')
-			.call(axisLeft(y).ticks(yTickCount).tickFormat(yFmt));
+			.call(valueTicks(axisLeft(y)).tickFormat(yFmt));
 	}
 
 	[xAxis, yAxis].forEach((axis) => {
@@ -542,9 +555,11 @@ export function drawChart(container, props, dispatch) {
 			bars.push({
 				seriesName: seriesNames[si],
 				seriesIndex: si,
+				colorIdx: s._idx, // original index → stable gradient/pattern def id
 				label,
 				categoryIndex: ci,
 				value,
+				vEnd: y1, // end value in data terms (for the clamp-overflow check)
 				color: colorFor(s, s._idx),
 				bx, bw,
 				pyBase,
@@ -564,6 +579,51 @@ export function drawChart(container, props, dispatch) {
 	const depthFor = (d) => Math.max(0, Math.min(depth3D, d.bw * 0.5));
 	const topShade = (c) => { const col = color(c); return col ? col.brighter(0.5).toString() : c; };
 	const sideShade = (c) => { const col = color(c); return col ? col.darker(0.7).toString() : c; };
+
+	// ----- bar fill style (gradient / pattern defs) -----
+	// One def per series original index so ids stay stable when a series is hidden.
+	// Patterns keep the series color as the tile background with a darker motif overlay
+	// (color + texture, colorblind-friendlier). Gradients run along the value axis.
+	const buildGradient = (defs, idx, col) => {
+		const c = color(col);
+		const lighter = c ? c.brighter(0.35).toString() : col;
+		const g = defs.append('linearGradient').attr('id', `cc-grad-${idx}`)
+			.attr('x1', 0).attr('y1', 0)
+			.attr('x2', horizontal ? 1 : 0).attr('y2', horizontal ? 0 : 1);
+		// the value-end of the bar gets the lighter stop (top for columns, right for bars)
+		const ends = horizontal ? [col, lighter] : [lighter, col];
+		g.append('stop').attr('offset', '0%').attr('stop-color', ends[0]);
+		g.append('stop').attr('offset', '100%').attr('stop-color', ends[1]);
+	};
+	const buildPattern = (defs, idx, col) => {
+		const size = 6;
+		const sw = 1.4;
+		const stroke = sideShade(col);
+		const p = defs.append('pattern').attr('id', `cc-pat-${idx}`)
+			.attr('patternUnits', 'userSpaceOnUse').attr('width', size).attr('height', size);
+		p.append('rect').attr('width', size).attr('height', size).attr('fill', col);
+		const line = (dd) => p.append('path').attr('d', dd).attr('stroke', stroke).attr('stroke-width', sw).attr('fill', 'none');
+		const motif = ((idx % 6) + 6) % 6;
+		if (motif === 0) line(`M0,${size}l${size},${-size}`);          // diagonal /
+		else if (motif === 1) line(`M0,0l${size},${size}`);            // diagonal \
+		else if (motif === 2) line(`M0,${size}l${size},${-size}M0,0l${size},${size}`); // cross-hatch
+		else if (motif === 3) p.append('circle').attr('cx', size / 2).attr('cy', size / 2).attr('r', 1.3).attr('fill', stroke); // dots
+		else if (motif === 4) line(`M0,${size / 2}h${size}`);          // horizontal
+		else line(`M${size / 2},0v${size}`);                           // vertical
+	};
+	if (barFillStyle !== 'solid') {
+		const fillDefs = svg.append('defs');
+		allSeries.forEach((s) => {
+			const col = colorFor(s, s._idx);
+			if (barFillStyle === 'pattern') buildPattern(fillDefs, s._idx, col);
+			else buildGradient(fillDefs, s._idx, col);
+		});
+	}
+	const frontFill = (d) => (
+		barFillStyle === 'pattern' ? `url(#cc-pat-${d.colorIdx})`
+			: barFillStyle === 'gradient' ? `url(#cc-grad-${d.colorIdx})`
+				: d.color
+	);
 
 	// Build the front/top/side face paths for a given grown value-axis length `len`
 	// (>= 0). bx/bw are the bar's extent along the CATEGORY axis; pyBase/pyTop are its
@@ -592,10 +652,10 @@ export function drawChart(container, props, dispatch) {
 			rh = len;
 			roundSide = 'top';
 		}
+		// front corners round in 2D always, and in 3D when barCornerRadius3D is on
+		const fr = ((!bar3D || barCornerRadius3D) && d.isTopSegment) ? cornerRadius : 0;
 		return {
-			front: bar3D
-				? `M${rx},${ry}h${rw}v${rh}h${-rw}z`
-				: roundedRect(rx, ry, rw, rh, d.isTopSegment ? cornerRadius : 0, roundSide),
+			front: roundedRect(rx, ry, rw, rh, fr, roundSide),
 			top: `M${rx},${ry}l${dep},${-dep}h${rw}l${-dep},${dep}z`,
 			side: `M${rx + rw},${ry}l${dep},${-dep}v${rh}l${-dep},${dep}z`
 		};
@@ -610,6 +670,12 @@ export function drawChart(container, props, dispatch) {
 		g.select('.cc-face-front').attr('fill', baseColor);
 		g.select('.cc-face-top').attr('fill', topShade(baseColor));
 		g.select('.cc-face-side').attr('fill', sideShade(baseColor));
+	};
+	// restore the resting fills after a hover (front returns to its gradient/pattern/solid)
+	const restoreGroup = (g, d) => {
+		g.select('.cc-face-front').attr('fill', frontFill(d));
+		g.select('.cc-face-top').attr('fill', topShade(d.color));
+		g.select('.cc-face-side').attr('fill', sideShade(d.color));
 	};
 
 	// ----- tooltip -----
@@ -713,7 +779,7 @@ export function drawChart(container, props, dispatch) {
 			if (horizontal) g.append('path').attr('class', 'cc-face-top').attr('fill', topShade(d.color));
 			else g.append('path').attr('class', 'cc-face-side').attr('fill', sideShade(d.color));
 		}
-		g.append('path').attr('class', 'cc-face-front').attr('fill', d.color);
+		g.append('path').attr('class', 'cc-face-front').attr('fill', frontFill(d));
 		if (bar3D && d.isTopSegment) {
 			if (horizontal) g.append('path').attr('class', 'cc-face-side').attr('fill', sideShade(d.color));
 			else g.append('path').attr('class', 'cc-face-top').attr('fill', topShade(d.color));
@@ -723,6 +789,7 @@ export function drawChart(container, props, dispatch) {
 	groups
 		.on('mouseenter', function (event, d) {
 			if (hoverHighlight) recolorGroup(select(this), hoverFill(d.color));
+			if (hoverDimOthers) { groups.style('opacity', 0.3); select(this).style('opacity', 1); }
 			if (tooltipEl) {
 				tooltipEl.html(renderTooltip(d)).style('display', 'block').style('opacity', 1);
 				moveTooltip(event, d);
@@ -733,7 +800,8 @@ export function drawChart(container, props, dispatch) {
 			if (tooltipEl) moveTooltip(event, d);
 		})
 		.on('mouseleave', function (event, d) {
-			if (hoverHighlight) recolorGroup(select(this), d.color);
+			if (hoverHighlight) restoreGroup(select(this), d); // back to gradient/pattern/solid
+			if (hoverDimOthers) groups.style('opacity', 1);
 			if (tooltipEl) tooltipEl.style('opacity', 0).style('display', 'none');
 		})
 		.on('click', function (event, d) {
@@ -812,6 +880,43 @@ export function drawChart(container, props, dispatch) {
 		if (animate && typeof requestAnimationFrame === 'function') {
 			labels.style('transition', `opacity 300ms ease ${Math.round((animationDuration + maxDelay) * 0.5)}ms`);
 			requestAnimationFrame(() => labels.style('opacity', 1));
+		}
+	}
+
+	// ----- clamp overflow indicator -----
+	// When a bar's end value exceeds the (explicit) value-axis bounds, clamp(true) cut it
+	// off silently. Mark those bars with a small zigzag "torn edge" at the clamped end so
+	// the truncation is visible. Auto bounds never overflow, so this only fires with a
+	// user-set yMin/yMax (or the log floor).
+	if (clampOverflowIndicator) {
+		const dMin = y.domain()[0];
+		const dMax = y.domain()[1];
+		const overflowed = barData.filter((d) => d.vEnd > dMax + 1e-9 || d.vEnd < dMin - 1e-9);
+		const zig = (d) => {
+			const amp = 3;
+			const teeth = Math.max(2, Math.round(d.bw / 5));
+			const step = d.bw / teeth;
+			if (horizontal) {
+				let path = `M${d.pyTop},${d.bx}`;
+				for (let i = 1; i <= teeth; i++) {
+					path += `L${d.pyTop + (i % 2 === 0 ? amp : -amp)},${d.bx + step * i}`;
+				}
+				return path;
+			}
+			let path = `M${d.bx},${d.pyTop}`;
+			for (let i = 1; i <= teeth; i++) {
+				path += `L${d.bx + step * i},${d.pyTop + (i % 2 === 0 ? amp : -amp)}`;
+			}
+			return path;
+		};
+		if (overflowed.length) {
+			plot.append('g').attr('class', 'cc-overflow').style('pointer-events', 'none')
+				.selectAll('path').data(overflowed).join('path')
+				.attr('d', zig)
+				.attr('fill', 'none')
+				.attr('stroke', (d) => autoContrast(d.color))
+				.attr('stroke-width', 1.5)
+				.attr('stroke-linejoin', 'round');
 		}
 	}
 

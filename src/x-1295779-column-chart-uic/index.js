@@ -130,6 +130,11 @@ createCustomElement('x-1295779-column-chart-uic', {
 		referenceLineValue: { default: '' },
 		referenceLineColor: { default: '#ef4444' },
 		referenceLineLabel: { default: '' },
+		barFillStyle: { default: 'solid' },
+		barCornerRadius3D: { default: false },
+		hoverDimOthers: { default: false },
+		yAxisTickValues: { default: null },
+		clampOverflowIndicator: { default: false },
 		chartHeight: { default: 360 }
 	},
 	actionHandlers: {
