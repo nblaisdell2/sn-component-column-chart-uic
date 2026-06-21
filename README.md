@@ -253,6 +253,13 @@ bindings/scripting), the default, and how to use it.
 > becomes `95.32%`, so use fractions for percent formats), `.2s` (SI `1.2k`). Leave blank
 > for the raw number.
 
+### Data
+
+- **Series data** (`series`, default = built-in sample) — The chart data: an array of series, each `{ name, color, data: [ { label, value } ] }`. Bind this to a data resource or edit it inline. Categories (x-axis) come from the **first** series' `label`s; keep labels aligned across series. Leave empty/unbound to render the built-in sample. See [Data shape](#data-shape-series-property).
+- **Column grouping** (`groupMode`, default `Grouped`) — Dropdown: **Grouped** (series side by side) or **Stacked** (series stacked into one column per category).
+- **Orientation** (`orientation`, default `Vertical`) — Dropdown: **Vertical (columns)** or **Horizontal (bars)**. Horizontal is much better for long category labels. Everything else (3D, stacking, gridlines, labels, tooltip) follows the flip.
+- **Stack offset** (`stackOffset`, default `None`) — *Stacked mode only.* **None** = raw totals; **100% (expand)** = every column normalized to full height (the y-axis switches to percent); **Diverging (+/−)** = negatives drop below the zero line and positives rise above it.
+
 ### Header & border
 
 - **Title** (`chartTitle`, default `Tickets by Month`) — Heading shown above the chart. Leave blank to hide it.
@@ -265,41 +272,60 @@ bindings/scripting), the default, and how to use it.
 - **Border width** (`borderWidth`, default `0`) — Border thickness in pixels. `0` = no border (also requires a border color to show).
 - **Border radius** (`borderRadius`, default `0`) — Rounded corners of the widget, in pixels.
 
-### Data
-
-- **Series data** (`series`, default = built-in sample) — The chart data: an array of series, each `{ name, color, data: [ { label, value } ] }`. Bind this to a data resource or edit it inline. Categories (x-axis) come from the **first** series' `label`s; keep labels aligned across series. Leave empty/unbound to render the built-in sample. See [Data shape](#data-shape-series-property).
-- **Column grouping** (`groupMode`, default `Grouped`) — Dropdown: **Grouped** (series side by side) or **Stacked** (series stacked into one column per category).
-
 ### Display
 
 - **Chart height (px)** (`chartHeight`, default `360`) — Height of the chart in pixels. This is the knob for making the chart taller/shorter.
 - **Column padding** (`columnPadding`, default `0.2`) — Gap between columns/groups as a fraction of the band width (`0` = touching, `0.9` = thin). Range 0–0.95.
 - **Inner group padding (grouped only)** (`groupPadding`, default `0.05`) — In grouped mode, the gap between bars **within** a group, as a fraction (0–0.5). Ignored when stacked.
-- **Corner radius (2D only)** (`cornerRadius`, default `4`) — Rounded top corners of each column, in pixels. Applies only when 3D columns is **off**.
 - **3D columns** (`bar3D`, default `true`) — Render columns as extruded 3D bars (lit top + shaded side). Turn off for flat 2D bars.
 - **3D depth (when 3D on)** (`depth3D`, default `10`) — Extrusion depth of the 3D effect, in pixels. Auto-clamped to half the bar width.
-- **Animate** (`animate`, default `true`) — Animate columns growing in on first render and on data change.
-- **Animation duration (ms)** (`animationDuration`, default `800`) — Length of the grow-in animation in milliseconds.
+- **Corner radius (2D only)** (`cornerRadius`, default `4`) — Rounded corners (at the growing end) of each column, in pixels. Applies in flat (2D) mode, or in 3D when *Rounded corners in 3D* is on.
+- **Rounded corners in 3D** (`barCornerRadius3D`, default `false`) — Apply the corner radius to the column fronts even in 3D mode (off = square 3D fronts). Needs *Corner radius* > 0.
+- **Bar opacity** (`barOpacity`, default `1`) — Fill opacity of the columns, 0 (transparent) to 1 (solid). Useful for layered/branded looks.
+- **Minimum bar size (px)** (`minBarHeight`, default `0`) — Pixel floor so tiny non-zero values stay visible/clickable. Applies to grouped mode; `0` = off.
 - **Drop shadow** (`dropShadow`, default `true`) — Apply a soft drop shadow to the columns.
 - **Shadow color (when drop shadow on)** (`shadowColor`, default `rgba(0,0,0,0.25)`) — Color of the drop shadow (supports `rgba` for opacity).
 - **Shadow blur (when drop shadow on)** (`shadowBlur`, default `4`) — Blur radius of the drop shadow, in pixels.
 - **Hover highlight** (`hoverHighlight`, default `true`) — Recolor a column on mouse-over.
 - **Hover color (when hover highlight on)** (`hoverColor`, default blank) — Color a column turns on hover. Blank = automatically brighten the column's own color.
+- **Dim others on hover** (`hoverDimOthers`, default `false`) — Fade the other columns while hovering one, so the hovered column stands out.
+- **Animate** (`animate`, default `true`) — Animate columns growing in on first render and on data change.
+- **Animation duration (ms)** (`animationDuration`, default `800`) — Length of the grow-in animation in milliseconds.
+- **Animation easing** (`animationEasing`, default `Cubic out`) — Dropdown of d3-ease curves: **Linear, Cubic out, Cubic in-out, Quad out, Exp out, Back out, Bounce out, Elastic out**.
+- **Animation stagger (ms)** (`animationStagger`, default `0`) — Delay between categories for a left-to-right cascade. `0` = all bars animate together.
 - **Base font family** (`fontFamily`, default blank) — CSS font-family for chart text that doesn't have its own family set (title, legend, data labels). Blank = inherit from the page.
 
-### Y-axis
+### Colors
 
-- **Title** (`yAxisLabel`, default blank) — Rotated caption beside the y-axis. Blank to hide.
-- **Minimum** (`yMin`, default automatic) — Fixed y-axis minimum. Leave blank for automatic.
-- **Maximum** (`yMax`, default automatic) — Fixed y-axis maximum. Leave blank for automatic. Values above it are **truncated** at the top line.
-- **Tick count** (`yTickCount`, default `5`) — Approximate number of ticks/gridlines on the y-axis.
-- **Label format** (`yAxisFormat`, default blank) — D3 format for the **y-axis tick labels only** (independent of the data labels). See the format note above.
-- **Show gridlines** (`showGridlines`, default `true`) — Draw horizontal gridlines at each y tick.
-- **Gridline color** (`gridColor`, default `#e5e7eb`) — Color of the horizontal gridlines.
+- **Use per-series colors** (`useSeriesColors`, default `true`) — Use each series' own `color` field when present; otherwise fall back to the scheme/palette below.
+- **Color scheme** (`colorScheme`, default `Custom`) — Pick a built-in D3 categorical scheme — **Category10, Tableau10, Set2, Set3, Paired, Dark2, Pastel1, Accent** — or **Custom** to use the *Color palette*. A scheme only *fills the palette*: explicit per-series colors in the data still win when *Use per-series colors* is on.
+- **Color palette** (`colorPalette`, default 6-color set) — JSON array of CSS colors applied per series when *Use per-series colors* is off and *Color scheme* is **Custom**, e.g. `["#2E93fA","#66DA26"]`.
+- **Bar fill style** (`barFillStyle`, default `Solid`) — How each bar is filled: **Solid** color, a **Gradient** along the bar's value axis, or a colorblind-friendly **Pattern** (series color plus a per-series texture). Applies to the bar front; 3D side/top stay solid-shaded.
 
 ### X-axis
 
-- **Title** (`xAxisLabel`, default blank) — Caption beneath the x-axis. Blank to hide.
+The x-axis is the **category** axis (it swaps to the left side in horizontal orientation).
+
+- **Title** (`xAxisLabel`, default blank) — Caption for the category axis. Blank to hide.
+- **Tick label rotation** (`xTickRotation`, default `0`) — Rotate the category tick labels by this many degrees (e.g. `-45`, `-90`) so long/dense labels don't overlap. The chart auto-reserves space for tilted labels.
+- **Tick label interval** (`xTickInterval`, default `1`) — Show every Nth category label (`1` = all, `2` = every other, …). Bars are unaffected — only the labels thin out.
+- **Max tick labels** (`maxXTicks`, default `0`) — Cap how many category labels show; the chart auto-thins to roughly this many when there are more categories. `0` = no cap.
+- **Show gridlines** (`showXGridlines`, default `false`) — Draw gridlines along the category axis (vertical lines for columns, horizontal for bars), in addition to the value-axis gridlines.
+
+### Y-axis
+
+The y-axis is the **value** axis (it swaps to the bottom in horizontal orientation).
+
+- **Title** (`yAxisLabel`, default blank) — Rotated caption beside the value axis. Blank to hide.
+- **Scale type** (`yScaleType`, default `Linear`) — **Linear**, **Logarithmic** (for data spanning orders of magnitude; ignores zero/negatives, best with grouped data), or **Square root**.
+- **Minimum** (`yMin`, default automatic) — Fixed value-axis minimum. Leave blank for automatic.
+- **Maximum** (`yMax`, default automatic) — Fixed value-axis maximum. Leave blank for automatic. Values above it are **truncated** at the top line (see *Mark clipped bars*).
+- **Mark clipped bars** (`clampOverflowIndicator`, default `false`) — Draw a small zigzag "torn edge" on bars cut off by an explicit Minimum/Maximum, signaling the value extends beyond the axis.
+- **Tick count** (`yTickCount`, default `5`) — Approximate number of ticks/gridlines. Ignored when *Explicit tick values* is set.
+- **Explicit tick values** (`yAxisTickValues`, default blank) — JSON array of exact tick values, e.g. `[0, 25, 50, 75, 100]`. Overrides *Tick count*. Blank = automatic.
+- **Label format** (`yAxisFormat`, default blank) — D3 format for the **value-axis tick labels only** (independent of the data labels). See the format note above.
+- **Show gridlines** (`showGridlines`, default `true`) — Draw gridlines at each value tick (horizontal for columns, vertical for bars).
+- **Gridline color** (`gridColor`, default `#e5e7eb`) — Color of the value-axis gridlines (and category gridlines, when on).
 
 ### Axes (apply to both x and y)
 
@@ -313,12 +339,22 @@ bindings/scripting), the default, and how to use it.
 - **Show legend** (`showLegend`, default `true`) — Show a legend of series names with color swatches.
 - **Position** (`legendPosition`, default `Bottom`) — Dropdown: **Top**, **Right**, or **Bottom**.
 - **Font size** (`legendFontSize`, default `12`) — Size (px) of the legend text.
+- **Clickable to toggle series** (`legendInteractive`, default `false`) — Let viewers click a legend item to hide/show that series; the chart rescales to the remaining series. Hidden items stay in the legend (dimmed/struck-through) so they can be toggled back. At least one series always stays visible.
 
 ### Data label
 
-- **Show data labels** (`showValueLabels`, default `true`) — Draw each column's numeric value inside the bar (centered; text color auto-contrasts with the bar).
-- **Label format** (`valueLabelFormat`, default blank) — D3 format for the **in-bar value labels only** (independent of the y-axis). See the format note above.
-- **Font size** (`labelFontSize`, default `12`) — Size (px) of the in-bar value labels.
+- **Show data labels** (`showValueLabels`, default `true`) — Draw each column's numeric value (text color auto-contrasts with the bar).
+- **Position** (`valueLabelPosition`, default `Inside`) — Where to draw the labels: **Inside** each bar (centered), **Above / past end** (just beyond the bar's value end), or **None** (hidden).
+- **Label format** (`valueLabelFormat`, default blank) — D3 format for the **value labels only** (independent of the y-axis). See the format note above.
+- **Font size** (`labelFontSize`, default `12`) — Size (px) of the value labels.
+
+### Reference line
+
+A target/average threshold line drawn across the plot.
+
+- **Value** (`referenceLineValue`, default blank) — Enter a number to draw a line at that value, or **`avg`** (or `mean`) to auto-draw the average of the data. Blank = no line. A value outside the axis range clamps to the edge.
+- **Color** (`referenceLineColor`, default `#ef4444`) — Color of the reference line and its label.
+- **Label** (`referenceLineLabel`, default blank) — Optional caption drawn at the end of the line.
 
 ### Tooltip
 
@@ -332,20 +368,15 @@ A hover tooltip shown when the pointer is over a column.
   - `{swatch}` — a small **colored dot** matching the series color (rendered as HTML, not escaped) · `{color}` — the series color string as text
   - **`{anyCustomKey}`** — any extra key you include on a data point. E.g. with
     `data: [{ "label": "Jan", "value": 44, "owner": "Team A" }]`, use `{owner}` in the template.
-- **Follow cursor** (`tooltipFollowCursor`, default `true`) — Tooltip tracks the pointer; turn off to anchor it above the hovered column. Either way it's clamped within the chart bounds.
+- **Follow cursor** (`tooltipFollowCursor`, default `true`) — Tooltip tracks the pointer; turn off to anchor it next to the hovered column. Either way it's clamped within the chart bounds.
 - **Background color** (`tooltipBackground`, default `rgba(17,24,39,0.92)`) — CSS color (supports rgba).
 - **Text color** (`tooltipTextColor`, default `#ffffff`).
 - **Font size** (`tooltipFontSize`, default `12`).
 
-### Colors
-
-- **Use per-series colors** (`useSeriesColors`, default `true`) — Use each series' own `color` field when present; otherwise fall back to the palette below.
-- **Color palette** (`colorPalette`, default 6-color set) — JSON array of CSS colors applied per series when *Use per-series colors* is off, e.g. `["#2E93fA","#66DA26"]`.
-
-> **Note on defaults:** the JSON/auto properties (`series`, `colorPalette`, `yMin`, `yMax`)
-> have no default shown in the panel — their real defaults live in the component code
-> (`src/x-1295779-column-chart-uic/index.js`), because raw arrays/objects can't be
-> serialized into the update-set XML. The chart still falls back to sample data and
+> **Note on defaults:** the JSON/auto properties (`series`, `colorPalette`, `yMin`, `yMax`,
+> `yAxisTickValues`) have no default shown in the panel — their real defaults live in the
+> component code (`src/x-1295779-column-chart-uic/index.js`), because raw arrays/objects
+> can't be serialized into the update-set XML. The chart still falls back to sample data and
 > automatic axis bounds at runtime.
 
 ---

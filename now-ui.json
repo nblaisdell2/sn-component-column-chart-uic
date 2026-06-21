@@ -14,6 +14,55 @@
       },
       "properties": [
         {
+          "name": "series",
+          "label": "Data · Series data",
+          "description": "Array of series, each: { name, color, data: [ { label, value } ] }. Categories come from the first series' labels. Bind to a data resource or leave empty to show built-in sample data.",
+          "fieldType": "json"
+        },
+        {
+          "name": "groupMode",
+          "label": "Data · Column grouping",
+          "description": "How multiple series are laid out.",
+          "fieldType": "choice",
+          "defaultValue": "grouped",
+          "typeMetadata": {
+            "variant": "dropdown",
+            "choices": [
+              { "label": "Grouped (side by side)", "value": "grouped" },
+              { "label": "Stacked", "value": "stacked" }
+            ]
+          }
+        },
+        {
+          "name": "orientation",
+          "label": "Data · Orientation",
+          "description": "Draw vertical columns or horizontal bars. Horizontal is better for long category labels.",
+          "fieldType": "choice",
+          "defaultValue": "vertical",
+          "typeMetadata": {
+            "variant": "dropdown",
+            "choices": [
+              { "label": "Vertical (columns)", "value": "vertical" },
+              { "label": "Horizontal (bars)", "value": "horizontal" }
+            ]
+          }
+        },
+        {
+          "name": "stackOffset",
+          "label": "Data · Stack offset",
+          "description": "Only applies when Column grouping is Stacked. None = raw totals; 100% = every column normalized to full height (y-axis shows %); Diverging = negatives drop below the zero line, positives rise above.",
+          "fieldType": "choice",
+          "defaultValue": "none",
+          "typeMetadata": {
+            "variant": "dropdown",
+            "choices": [
+              { "label": "None", "value": "none" },
+              { "label": "100% (expand)", "value": "expand" },
+              { "label": "Diverging (+/-)", "value": "diverging" }
+            ]
+          }
+        },
+        {
           "name": "chartTitle",
           "label": "Header & border · Title",
           "description": "Title rendered above the chart. Leave blank to hide.",
@@ -76,57 +125,6 @@
           "fieldType": "number",
           "defaultValue": 0
         },
-
-        {
-          "name": "series",
-          "label": "Data · Series data",
-          "description": "Array of series, each: { name, color, data: [ { label, value } ] }. Categories come from the first series' labels. Bind to a data resource or leave empty to show built-in sample data.",
-          "fieldType": "json"
-        },
-        {
-          "name": "groupMode",
-          "label": "Data · Column grouping",
-          "description": "How multiple series are laid out.",
-          "fieldType": "choice",
-          "defaultValue": "grouped",
-          "typeMetadata": {
-            "variant": "dropdown",
-            "choices": [
-              { "label": "Grouped (side by side)", "value": "grouped" },
-              { "label": "Stacked", "value": "stacked" }
-            ]
-          }
-        },
-        {
-          "name": "orientation",
-          "label": "Data · Orientation",
-          "description": "Draw vertical columns or horizontal bars. Horizontal is better for long category labels.",
-          "fieldType": "choice",
-          "defaultValue": "vertical",
-          "typeMetadata": {
-            "variant": "dropdown",
-            "choices": [
-              { "label": "Vertical (columns)", "value": "vertical" },
-              { "label": "Horizontal (bars)", "value": "horizontal" }
-            ]
-          }
-        },
-        {
-          "name": "stackOffset",
-          "label": "Data · Stack offset",
-          "description": "Only applies when Column grouping is Stacked. None = raw totals; 100% = every column normalized to full height (y-axis shows %); Diverging = negatives drop below the zero line, positives rise above.",
-          "fieldType": "choice",
-          "defaultValue": "none",
-          "typeMetadata": {
-            "variant": "dropdown",
-            "choices": [
-              { "label": "None", "value": "none" },
-              { "label": "100% (expand)", "value": "expand" },
-              { "label": "Diverging (+/-)", "value": "diverging" }
-            ]
-          }
-        },
-
         {
           "name": "chartHeight",
           "label": "Display · Chart height (px)",
@@ -149,13 +147,6 @@
           "defaultValue": 0.05
         },
         {
-          "name": "cornerRadius",
-          "label": "Display · Corner radius (2D only)",
-          "description": "Rounded top corners of each column, in pixels. Applies in flat (2D) mode only.",
-          "fieldType": "number",
-          "defaultValue": 4
-        },
-        {
           "name": "bar3D",
           "label": "Display · 3D columns",
           "description": "Render columns as extruded 3D bars (with lit top and shaded side faces).",
@@ -170,45 +161,18 @@
           "defaultValue": 10
         },
         {
-          "name": "animate",
-          "label": "Display · Animate",
-          "description": "Animate columns growing in on first render and on data change.",
+          "name": "cornerRadius",
+          "label": "Display · Corner radius (2D only)",
+          "description": "Rounded top corners of each column, in pixels. Applies in flat (2D) mode only.",
+          "fieldType": "number",
+          "defaultValue": 4
+        },
+        {
+          "name": "barCornerRadius3D",
+          "label": "Display · Rounded corners in 3D",
+          "description": "Apply the corner radius to the column fronts even in 3D mode (off = square 3D fronts). Needs Corner radius > 0.",
           "fieldType": "boolean",
-          "defaultValue": true
-        },
-        {
-          "name": "animationDuration",
-          "label": "Display · Animation duration (ms)",
-          "description": "Duration of the grow-in animation in milliseconds.",
-          "fieldType": "number",
-          "defaultValue": 800
-        },
-        {
-          "name": "animationEasing",
-          "label": "Display · Animation easing",
-          "description": "Easing curve for the grow-in animation.",
-          "fieldType": "choice",
-          "defaultValue": "cubicOut",
-          "typeMetadata": {
-            "variant": "dropdown",
-            "choices": [
-              { "label": "Linear", "value": "linear" },
-              { "label": "Cubic out", "value": "cubicOut" },
-              { "label": "Cubic in-out", "value": "cubicInOut" },
-              { "label": "Quad out", "value": "quadOut" },
-              { "label": "Exp out", "value": "expOut" },
-              { "label": "Back out", "value": "backOut" },
-              { "label": "Bounce out", "value": "bounceOut" },
-              { "label": "Elastic out", "value": "elasticOut" }
-            ]
-          }
-        },
-        {
-          "name": "animationStagger",
-          "label": "Display · Animation stagger (ms)",
-          "description": "Delay between categories for a cascade grow-in (0 = all bars animate together).",
-          "fieldType": "number",
-          "defaultValue": 0
+          "defaultValue": false
         },
         {
           "name": "barOpacity",
@@ -223,27 +187,6 @@
           "description": "Pixel floor so tiny non-zero values stay visible and clickable. Applies to grouped mode. 0 = off.",
           "fieldType": "number",
           "defaultValue": 0
-        },
-        {
-          "name": "referenceLineValue",
-          "label": "Reference line · Value",
-          "description": "Draw a threshold line across the plot at this value. Enter a number, or 'avg' (or 'mean') to auto-draw the average of the data. Blank = no line.",
-          "fieldType": "string",
-          "defaultValue": ""
-        },
-        {
-          "name": "referenceLineColor",
-          "label": "Reference line · Color",
-          "description": "Color of the reference line and its label.",
-          "fieldType": "string",
-          "defaultValue": "#ef4444"
-        },
-        {
-          "name": "referenceLineLabel",
-          "label": "Reference line · Label",
-          "description": "Optional caption drawn at the end of the reference line.",
-          "fieldType": "string",
-          "defaultValue": ""
         },
         {
           "name": "dropShadow",
@@ -288,11 +231,45 @@
           "defaultValue": false
         },
         {
-          "name": "barCornerRadius3D",
-          "label": "Display · Rounded corners in 3D",
-          "description": "Apply the corner radius to the column fronts even in 3D mode (off = square 3D fronts). Needs Corner radius > 0.",
+          "name": "animate",
+          "label": "Display · Animate",
+          "description": "Animate columns growing in on first render and on data change.",
           "fieldType": "boolean",
-          "defaultValue": false
+          "defaultValue": true
+        },
+        {
+          "name": "animationDuration",
+          "label": "Display · Animation duration (ms)",
+          "description": "Duration of the grow-in animation in milliseconds.",
+          "fieldType": "number",
+          "defaultValue": 800
+        },
+        {
+          "name": "animationEasing",
+          "label": "Display · Animation easing",
+          "description": "Easing curve for the grow-in animation.",
+          "fieldType": "choice",
+          "defaultValue": "cubicOut",
+          "typeMetadata": {
+            "variant": "dropdown",
+            "choices": [
+              { "label": "Linear", "value": "linear" },
+              { "label": "Cubic out", "value": "cubicOut" },
+              { "label": "Cubic in-out", "value": "cubicInOut" },
+              { "label": "Quad out", "value": "quadOut" },
+              { "label": "Exp out", "value": "expOut" },
+              { "label": "Back out", "value": "backOut" },
+              { "label": "Bounce out", "value": "bounceOut" },
+              { "label": "Elastic out", "value": "elasticOut" }
+            ]
+          }
+        },
+        {
+          "name": "animationStagger",
+          "label": "Display · Animation stagger (ms)",
+          "description": "Delay between categories for a cascade grow-in (0 = all bars animate together).",
+          "fieldType": "number",
+          "defaultValue": 0
         },
         {
           "name": "fontFamily",
@@ -301,83 +278,55 @@
           "fieldType": "string",
           "defaultValue": ""
         },
-
         {
-          "name": "yAxisLabel",
-          "label": "Y-axis · Title",
-          "description": "Rotated caption beside the y-axis. Leave blank to hide.",
-          "fieldType": "string",
-          "defaultValue": ""
-        },
-        {
-          "name": "yMin",
-          "label": "Y-axis · Minimum",
-          "description": "Fixed y-axis minimum. Leave blank for automatic.",
-          "fieldType": "number"
-        },
-        {
-          "name": "yMax",
-          "label": "Y-axis · Maximum",
-          "description": "Fixed y-axis maximum. Leave blank for automatic. Bars exceeding it are truncated at the top.",
-          "fieldType": "number"
-        },
-        {
-          "name": "yTickCount",
-          "label": "Y-axis · Tick count",
-          "description": "Approximate number of ticks/gridlines on the y-axis. Ignored when Explicit tick values is set.",
-          "fieldType": "number",
-          "defaultValue": 5
-        },
-        {
-          "name": "yAxisTickValues",
-          "label": "Y-axis · Explicit tick values",
-          "description": "JSON array of numbers for exact y-axis ticks/gridlines, e.g. [0, 25, 50, 75, 100]. Overrides Tick count. Blank = automatic.",
-          "fieldType": "json"
-        },
-        {
-          "name": "clampOverflowIndicator",
-          "label": "Y-axis · Mark clipped bars",
-          "description": "Draw a small zigzag 'torn edge' on bars cut off by an explicit Minimum/Maximum, signaling the value extends beyond the axis.",
-          "fieldType": "boolean",
-          "defaultValue": false
-        },
-        {
-          "name": "yAxisFormat",
-          "label": "Y-axis · Label format",
-          "description": "D3 number format specifier for the y-axis tick labels only (e.g. \".0f\", \"$,.0f\", \".0%\"). Blank = default.",
-          "fieldType": "string",
-          "defaultValue": ""
-        },
-        {
-          "name": "showGridlines",
-          "label": "Y-axis · Show gridlines",
-          "description": "Draw horizontal gridlines at each y tick.",
+          "name": "useSeriesColors",
+          "label": "Colors · Use per-series colors",
+          "description": "Use each series' own 'color' field when present. Falls back to the palette otherwise.",
           "fieldType": "boolean",
           "defaultValue": true
         },
         {
-          "name": "gridColor",
-          "label": "Y-axis · Gridline color",
-          "description": "Color of horizontal gridlines.",
-          "fieldType": "string",
-          "defaultValue": "#e5e7eb"
-        },
-        {
-          "name": "yScaleType",
-          "label": "Y-axis · Scale type",
-          "description": "Linear (default), Logarithmic (for data spanning orders of magnitude; ignores zero/negatives and is best with grouped data), or Square root.",
+          "name": "colorScheme",
+          "label": "Colors · Color scheme",
+          "description": "Pick a built-in D3 categorical scheme to color the series, or Custom to use the Color palette below. Per-series colors in the data still win when 'Use per-series colors' is on.",
           "fieldType": "choice",
-          "defaultValue": "linear",
+          "defaultValue": "custom",
           "typeMetadata": {
             "variant": "dropdown",
             "choices": [
-              { "label": "Linear", "value": "linear" },
-              { "label": "Logarithmic", "value": "log" },
-              { "label": "Square root", "value": "sqrt" }
+              { "label": "Custom (use palette)", "value": "custom" },
+              { "label": "Category10", "value": "category10" },
+              { "label": "Tableau10", "value": "tableau10" },
+              { "label": "Set2", "value": "set2" },
+              { "label": "Set3", "value": "set3" },
+              { "label": "Paired", "value": "paired" },
+              { "label": "Dark2", "value": "dark2" },
+              { "label": "Pastel1", "value": "pastel1" },
+              { "label": "Accent", "value": "accent" }
             ]
           }
         },
-
+        {
+          "name": "colorPalette",
+          "label": "Colors · Color palette",
+          "description": "JSON array of CSS colors used per series when 'Use per-series colors' is off and Color scheme is Custom, e.g. [\"#2E93fA\",\"#66DA26\"].",
+          "fieldType": "json"
+        },
+        {
+          "name": "barFillStyle",
+          "label": "Colors · Bar fill style",
+          "description": "How each bar is filled: Solid color, a Gradient along the bar, or a colorblind-friendly Pattern (series color plus a texture that varies per series).",
+          "fieldType": "choice",
+          "defaultValue": "solid",
+          "typeMetadata": {
+            "variant": "dropdown",
+            "choices": [
+              { "label": "Solid", "value": "solid" },
+              { "label": "Gradient", "value": "gradient" },
+              { "label": "Pattern (texture)", "value": "pattern" }
+            ]
+          }
+        },
         {
           "name": "xAxisLabel",
           "label": "X-axis · Title",
@@ -413,7 +362,81 @@
           "fieldType": "boolean",
           "defaultValue": false
         },
-
+        {
+          "name": "yAxisLabel",
+          "label": "Y-axis · Title",
+          "description": "Rotated caption beside the y-axis. Leave blank to hide.",
+          "fieldType": "string",
+          "defaultValue": ""
+        },
+        {
+          "name": "yScaleType",
+          "label": "Y-axis · Scale type",
+          "description": "Linear (default), Logarithmic (for data spanning orders of magnitude; ignores zero/negatives and is best with grouped data), or Square root.",
+          "fieldType": "choice",
+          "defaultValue": "linear",
+          "typeMetadata": {
+            "variant": "dropdown",
+            "choices": [
+              { "label": "Linear", "value": "linear" },
+              { "label": "Logarithmic", "value": "log" },
+              { "label": "Square root", "value": "sqrt" }
+            ]
+          }
+        },
+        {
+          "name": "yMin",
+          "label": "Y-axis · Minimum",
+          "description": "Fixed y-axis minimum. Leave blank for automatic.",
+          "fieldType": "number"
+        },
+        {
+          "name": "yMax",
+          "label": "Y-axis · Maximum",
+          "description": "Fixed y-axis maximum. Leave blank for automatic. Bars exceeding it are truncated at the top.",
+          "fieldType": "number"
+        },
+        {
+          "name": "clampOverflowIndicator",
+          "label": "Y-axis · Mark clipped bars",
+          "description": "Draw a small zigzag 'torn edge' on bars cut off by an explicit Minimum/Maximum, signaling the value extends beyond the axis.",
+          "fieldType": "boolean",
+          "defaultValue": false
+        },
+        {
+          "name": "yTickCount",
+          "label": "Y-axis · Tick count",
+          "description": "Approximate number of ticks/gridlines on the y-axis. Ignored when Explicit tick values is set.",
+          "fieldType": "number",
+          "defaultValue": 5
+        },
+        {
+          "name": "yAxisTickValues",
+          "label": "Y-axis · Explicit tick values",
+          "description": "JSON array of numbers for exact y-axis ticks/gridlines, e.g. [0, 25, 50, 75, 100]. Overrides Tick count. Blank = automatic.",
+          "fieldType": "json"
+        },
+        {
+          "name": "yAxisFormat",
+          "label": "Y-axis · Label format",
+          "description": "D3 number format specifier for the y-axis tick labels only (e.g. \".0f\", \"$,.0f\", \".0%\"). Blank = default.",
+          "fieldType": "string",
+          "defaultValue": ""
+        },
+        {
+          "name": "showGridlines",
+          "label": "Y-axis · Show gridlines",
+          "description": "Draw horizontal gridlines at each y tick.",
+          "fieldType": "boolean",
+          "defaultValue": true
+        },
+        {
+          "name": "gridColor",
+          "label": "Y-axis · Gridline color",
+          "description": "Color of horizontal gridlines.",
+          "fieldType": "string",
+          "defaultValue": "#e5e7eb"
+        },
         {
           "name": "axisColor",
           "label": "Axes · Line color",
@@ -442,7 +465,6 @@
           "fieldType": "string",
           "defaultValue": ""
         },
-
         {
           "name": "showLegend",
           "label": "Legend · Show legend",
@@ -479,7 +501,6 @@
           "fieldType": "boolean",
           "defaultValue": false
         },
-
         {
           "name": "showValueLabels",
           "label": "Data label · Show data labels",
@@ -516,7 +537,27 @@
           "fieldType": "number",
           "defaultValue": 12
         },
-
+        {
+          "name": "referenceLineValue",
+          "label": "Reference line · Value",
+          "description": "Draw a threshold line across the plot at this value. Enter a number, or 'avg' (or 'mean') to auto-draw the average of the data. Blank = no line.",
+          "fieldType": "string",
+          "defaultValue": ""
+        },
+        {
+          "name": "referenceLineColor",
+          "label": "Reference line · Color",
+          "description": "Color of the reference line and its label.",
+          "fieldType": "string",
+          "defaultValue": "#ef4444"
+        },
+        {
+          "name": "referenceLineLabel",
+          "label": "Reference line · Label",
+          "description": "Optional caption drawn at the end of the reference line.",
+          "fieldType": "string",
+          "defaultValue": ""
+        },
         {
           "name": "showTooltip",
           "label": "Tooltip · Show tooltip",
@@ -558,56 +599,6 @@
           "description": "Tooltip font size, in pixels.",
           "fieldType": "number",
           "defaultValue": 12
-        },
-
-        {
-          "name": "useSeriesColors",
-          "label": "Colors · Use per-series colors",
-          "description": "Use each series' own 'color' field when present. Falls back to the palette otherwise.",
-          "fieldType": "boolean",
-          "defaultValue": true
-        },
-        {
-          "name": "colorScheme",
-          "label": "Colors · Color scheme",
-          "description": "Pick a built-in D3 categorical scheme to color the series, or Custom to use the Color palette below. Per-series colors in the data still win when 'Use per-series colors' is on.",
-          "fieldType": "choice",
-          "defaultValue": "custom",
-          "typeMetadata": {
-            "variant": "dropdown",
-            "choices": [
-              { "label": "Custom (use palette)", "value": "custom" },
-              { "label": "Category10", "value": "category10" },
-              { "label": "Tableau10", "value": "tableau10" },
-              { "label": "Set2", "value": "set2" },
-              { "label": "Set3", "value": "set3" },
-              { "label": "Paired", "value": "paired" },
-              { "label": "Dark2", "value": "dark2" },
-              { "label": "Pastel1", "value": "pastel1" },
-              { "label": "Accent", "value": "accent" }
-            ]
-          }
-        },
-        {
-          "name": "barFillStyle",
-          "label": "Colors · Bar fill style",
-          "description": "How each bar is filled: Solid color, a Gradient along the bar, or a colorblind-friendly Pattern (series color plus a texture that varies per series).",
-          "fieldType": "choice",
-          "defaultValue": "solid",
-          "typeMetadata": {
-            "variant": "dropdown",
-            "choices": [
-              { "label": "Solid", "value": "solid" },
-              { "label": "Gradient", "value": "gradient" },
-              { "label": "Pattern (texture)", "value": "pattern" }
-            ]
-          }
-        },
-        {
-          "name": "colorPalette",
-          "label": "Colors · Color palette",
-          "description": "JSON array of CSS colors used per series when 'Use per-series colors' is off and Color scheme is Custom, e.g. [\"#2E93fA\",\"#66DA26\"].",
-          "fieldType": "json"
         }
       ],
       "actions": [
