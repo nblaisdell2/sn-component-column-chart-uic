@@ -184,6 +184,68 @@
           "defaultValue": 800
         },
         {
+          "name": "animationEasing",
+          "label": "Display · Animation easing",
+          "description": "Easing curve for the grow-in animation.",
+          "fieldType": "choice",
+          "defaultValue": "cubicOut",
+          "typeMetadata": {
+            "variant": "dropdown",
+            "choices": [
+              { "label": "Linear", "value": "linear" },
+              { "label": "Cubic out", "value": "cubicOut" },
+              { "label": "Cubic in-out", "value": "cubicInOut" },
+              { "label": "Quad out", "value": "quadOut" },
+              { "label": "Exp out", "value": "expOut" },
+              { "label": "Back out", "value": "backOut" },
+              { "label": "Bounce out", "value": "bounceOut" },
+              { "label": "Elastic out", "value": "elasticOut" }
+            ]
+          }
+        },
+        {
+          "name": "animationStagger",
+          "label": "Display · Animation stagger (ms)",
+          "description": "Delay between categories for a cascade grow-in (0 = all bars animate together).",
+          "fieldType": "number",
+          "defaultValue": 0
+        },
+        {
+          "name": "barOpacity",
+          "label": "Display · Bar opacity",
+          "description": "Fill opacity of the columns from 0 (transparent) to 1 (solid).",
+          "fieldType": "number",
+          "defaultValue": 1
+        },
+        {
+          "name": "minBarHeight",
+          "label": "Display · Minimum bar size (px)",
+          "description": "Pixel floor so tiny non-zero values stay visible and clickable. Applies to grouped mode. 0 = off.",
+          "fieldType": "number",
+          "defaultValue": 0
+        },
+        {
+          "name": "referenceLineValue",
+          "label": "Reference line · Value",
+          "description": "Draw a threshold line across the plot at this value. Enter a number, or 'avg' (or 'mean') to auto-draw the average of the data. Blank = no line.",
+          "fieldType": "string",
+          "defaultValue": ""
+        },
+        {
+          "name": "referenceLineColor",
+          "label": "Reference line · Color",
+          "description": "Color of the reference line and its label.",
+          "fieldType": "string",
+          "defaultValue": "#ef4444"
+        },
+        {
+          "name": "referenceLineLabel",
+          "label": "Reference line · Label",
+          "description": "Optional caption drawn at the end of the reference line.",
+          "fieldType": "string",
+          "defaultValue": ""
+        },
+        {
           "name": "dropShadow",
           "label": "Display · Drop shadow",
           "description": "Apply a soft drop shadow to the columns.",
@@ -317,6 +379,13 @@
           "fieldType": "number",
           "defaultValue": 0
         },
+        {
+          "name": "showXGridlines",
+          "label": "X-axis · Show gridlines",
+          "description": "Draw gridlines along the category axis (vertical lines for columns, horizontal for bars), in addition to the value-axis gridlines.",
+          "fieldType": "boolean",
+          "defaultValue": false
+        },
 
         {
           "name": "axisColor",
@@ -376,13 +445,35 @@
           "fieldType": "number",
           "defaultValue": 12
         },
+        {
+          "name": "legendInteractive",
+          "label": "Legend · Clickable to toggle series",
+          "description": "Let viewers click a legend item to hide/show that series; the chart rescales to the remaining series. Hidden items stay in the legend (dimmed) so they can be toggled back.",
+          "fieldType": "boolean",
+          "defaultValue": false
+        },
 
         {
           "name": "showValueLabels",
           "label": "Data label · Show data labels",
-          "description": "Draw the numeric value inside each column.",
+          "description": "Draw the numeric value on each column.",
           "fieldType": "boolean",
           "defaultValue": true
+        },
+        {
+          "name": "valueLabelPosition",
+          "label": "Data label · Position",
+          "description": "Where to draw the data labels: inside each bar, just above/past the bar's end, or hidden.",
+          "fieldType": "choice",
+          "defaultValue": "inside",
+          "typeMetadata": {
+            "variant": "dropdown",
+            "choices": [
+              { "label": "Inside", "value": "inside" },
+              { "label": "Above / past end", "value": "above" },
+              { "label": "None", "value": "none" }
+            ]
+          }
         },
         {
           "name": "valueLabelFormat",

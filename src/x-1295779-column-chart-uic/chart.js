@@ -23,7 +23,10 @@ import {
 import { axisBottom, axisLeft } from 'd3-axis';
 import { format } from 'd3-format';
 import { color } from 'd3-color';
-import { easeCubicOut } from 'd3-ease';
+import {
+	easeLinear, easeCubicOut, easeCubicInOut, easeQuadOut,
+	easeExpOut, easeBackOut, easeBounceOut, easeElasticOut
+} from 'd3-ease';
 
 // Named categorical schemes selectable via the `colorScheme` property. Each is a
 // plain array of CSS colors (imported by name so the prod build tree-shakes cleanly).
@@ -36,6 +39,19 @@ const COLOR_SCHEMES = {
 	dark2: schemeDark2,
 	pastel1: schemePastel1,
 	accent: schemeAccent
+};
+
+// Easing curves selectable via the `animationEasing` property (named imports so the
+// prod build tree-shakes the unused ones).
+const EASINGS = {
+	linear: easeLinear,
+	cubicOut: easeCubicOut,
+	cubicInOut: easeCubicInOut,
+	quadOut: easeQuadOut,
+	expOut: easeExpOut,
+	backOut: easeBackOut,
+	bounceOut: easeBounceOut,
+	elasticOut: easeElasticOut
 };
 
 const num = (v, fallback) => {
@@ -85,7 +101,19 @@ const roundedRect = (x, y, w, h, r, side) => {
 
 export function drawChart(container, props, dispatch) {
 	// ----- normalize props (values may arrive as strings from the panel) -----
-	const series = Array.isArray(props.series) ? props.series.filter((s) => s && Array.isArray(s.data)) : [];
+	const legendInteractive = props.legendInteractive === true;
+	// allSeries = the validity-filtered master list (each tagged with its original index
+	// _idx so colors stay stable when a series is hidden). legendInteractive hides series
+	// by name; the hidden set lives on the stable container node so it survives the
+	// redraw a legend click triggers. `series` is the visible subset that drives all
+	// scales/bars, so hiding a series rescales the chart.
+	const allSeries = (Array.isArray(props.series) ? props.series.filter((s) => s && Array.isArray(s.data)) : [])
+		.map((s, i) => Object.assign({}, s, { _idx: i }));
+	const nameOf = (s) => s.name || `Series ${s._idx + 1}`;
+	const hidden = legendInteractive
+		? (container.__ccHidden instanceof Set ? container.__ccHidden : (container.__ccHidden = new Set()))
+		: new Set();
+	const series = allSeries.filter((s) => !hidden.has(nameOf(s)));
 	const groupMode = props.groupMode === 'stacked' ? 'stacked' : 'grouped';
 	// vertical = columns (default); horizontal = bars. The renderer treats one axis
 	// as the "category" axis (scaleBand) and the other as the "value" axis
@@ -115,9 +143,32 @@ export function drawChart(container, props, dispatch) {
 	const shadowBlur = Math.max(0, num(props.shadowBlur, 4));
 	const animationDuration = Math.max(0, num(props.animationDuration, 800));
 	const animate = props.animate !== false && animationDuration > 0;
+	const animationStagger = Math.max(0, num(props.animationStagger, 0)); // ms delay per category
+	const easeFn = EASINGS[props.animationEasing] || easeCubicOut;
+	const barOpacity = Math.max(0, Math.min(1, num(props.barOpacity, 1)));
+	const minBarHeight = Math.max(0, num(props.minBarHeight, 0)); // px floor (grouped only)
+	const valueLabelPosition = ['inside', 'above', 'none'].includes(props.valueLabelPosition) ? props.valueLabelPosition : 'inside';
+	const showXGridlines = props.showXGridlines === true;
+	// reference line: a number, or 'avg'/'mean' to auto-draw the mean of the (visible) data
+	const refColor = props.referenceLineColor || '#ef4444';
+	const refLabel = props.referenceLineLabel || '';
+	let refValue = null;
+	if (!isBlank(props.referenceLineValue)) {
+		const rs = String(props.referenceLineValue).trim().toLowerCase();
+		if (rs === 'avg' || rs === 'mean') {
+			let sum = 0;
+			let cnt = 0;
+			series.forEach((s) => s.data.forEach((d) => { const v = num(d.value, NaN); if (Number.isFinite(v)) { sum += v; cnt += 1; } }));
+			refValue = cnt ? sum / cnt : null;
+		} else {
+			const n = num(props.referenceLineValue, NaN);
+			refValue = Number.isFinite(n) ? n : null;
+		}
+	}
 	const dropShadow = props.dropShadow !== false;
 	const showGridlines = props.showGridlines !== false;
-	const showLegend = props.showLegend !== false && series.length > 0;
+	// Legend keys off the full list so it stays visible (to toggle hidden series back on).
+	const showLegend = props.showLegend !== false && allSeries.length > 0;
 	const showValueLabels = props.showValueLabels === true;
 	const hoverHighlight = props.hoverHighlight !== false;
 	const bar3D = props.bar3D !== false;
@@ -189,7 +240,8 @@ export function drawChart(container, props, dispatch) {
 
 	// ----- categories & series names -----
 	const categories = series.length ? series[0].data.map((d) => d.label) : [];
-	const seriesNames = series.map((s, i) => s.name || `Series ${i + 1}`);
+	const seriesNames = series.map((s) => nameOf(s));
+	const allSeriesNames = allSeries.map((s) => nameOf(s)); // for the legend (incl. hidden)
 	const valueByCat = (s, label) => {
 		const hit = s.data.find((d) => d.label === label);
 		return hit ? num(hit.value, 0) : 0;
@@ -256,6 +308,12 @@ export function drawChart(container, props, dispatch) {
 		? Math.round(Math.sin(Math.abs(xTickRotation) * Math.PI / 180) * longestCat * axisFontSize * 0.6)
 		: 0;
 	if (rotatedExtent && !horizontal) margin.bottom += rotatedExtent;
+	// 'above' value labels sit just past the bar's value end — reserve room so the
+	// top-most (columns) / right-most (bars) labels don't clip.
+	if (showValueLabels && valueLabelPosition === 'above') {
+		if (horizontal) margin.right += Math.max(24, labelFontSize * 2.5);
+		else margin.top += labelFontSize + 8;
+	}
 	if (chartTitle) margin.top += titleFontSize + 22; // extra breathing room below the title
 	// xAxisLabel titles the category axis, yAxisLabel the value axis. Each follows its
 	// axis to the bottom or left depending on orientation.
@@ -269,7 +327,7 @@ export function drawChart(container, props, dispatch) {
 	if (showLegend) {
 		if (legendPosition === 'top') margin.top += legendRowH;
 		else if (legendPosition === 'bottom') margin.bottom += legendRowH + 12; // gap below the x-axis label
-		else margin.right += Math.min(180, Math.max(...seriesNames.map(legendItemW)) + 8);
+		else margin.right += Math.min(180, Math.max(...allSeriesNames.map(legendItemW)) + 8);
 	}
 
 	const innerW = Math.max(10, width - margin.left - margin.right);
@@ -376,6 +434,22 @@ export function drawChart(container, props, dispatch) {
 		catInterval = Math.max(catInterval, Math.ceil(categories.length / maxXTicks));
 	}
 	const catTickVals = catInterval > 1 ? categories.filter((c, i) => i % catInterval === 0) : categories;
+
+	// Optional category-axis gridlines (perpendicular to the value gridlines): vertical
+	// lines for columns, horizontal lines for bars. Drawn before the bars so they sit
+	// behind them; aligned to the same (possibly thinned) category ticks.
+	if (showXGridlines) {
+		const xgrid = plot.append('g').attr('class', 'cc-grid cc-grid-x');
+		if (horizontal) {
+			xgrid.call(axisLeft(x0).tickValues(catTickVals).tickSize(-innerW).tickFormat(''));
+		} else {
+			xgrid.attr('transform', `translate(0,${innerH})`)
+				.call(axisBottom(x0).tickValues(catTickVals).tickSize(-innerH).tickFormat(''));
+		}
+		xgrid.call((g) => g.select('.domain').remove())
+			.call((g) => g.selectAll('line').attr('stroke', gridColor).attr('stroke-dasharray', '2,2'));
+	}
+
 	let xAxis;
 	let yAxis;
 	if (horizontal) {
@@ -451,10 +525,19 @@ export function drawChart(container, props, dispatch) {
 					cum = y1;
 				}
 			} else {
-				bx = x0(label) + x1(s.name || `Series ${si + 1}`);
+				bx = x0(label) + x1(nameOf(s));
 				bw = x1.bandwidth();
 				y0 = valBase;
 				y1 = value;
+			}
+			let pyBase = y(y0);
+			let pyTop = y(y1);
+			// minBarHeight: floor the rendered length so tiny non-zero values stay
+			// visible/clickable. Grouped only — flooring stacked segments would push the
+			// stack past its total and misalign the pieces.
+			if (minBarHeight > 0 && groupMode !== 'stacked' && value !== 0 && Math.abs(pyTop - pyBase) < minBarHeight) {
+				const growDir = horizontal ? (value >= 0 ? 1 : -1) : (value >= 0 ? -1 : 1);
+				pyTop = pyBase + growDir * minBarHeight;
 			}
 			bars.push({
 				seriesName: seriesNames[si],
@@ -462,10 +545,10 @@ export function drawChart(container, props, dispatch) {
 				label,
 				categoryIndex: ci,
 				value,
-				color: colorFor(s, si),
+				color: colorFor(s, s._idx),
 				bx, bw,
-				pyBase: y(y0),
-				pyTop: y(y1),
+				pyBase,
+				pyTop,
 				isTopSegment: groupMode !== 'stacked' || si === series.length - 1,
 				raw: datum // original data point, so tooltip templates can use custom keys
 			});
@@ -609,6 +692,7 @@ export function drawChart(container, props, dispatch) {
 	const groups = plot.append('g')
 		.attr('class', 'cc-bars')
 		.attr('filter', dropShadow ? 'url(#cc-shadow)' : null)
+		.style('fill-opacity', barOpacity) // applies to all three 3D faces; labels stay opaque
 		.selectAll('g.cc-bar')
 		.data(barData)
 		.join('g')
@@ -664,16 +748,22 @@ export function drawChart(container, props, dispatch) {
 		});
 
 	// grow-in animation via requestAnimationFrame (no d3-transition dependency, so
-	// nothing here can be tree-shaken out of the production bundle).
+	// nothing here can be tree-shaken out of the production bundle). Easing is chosen by
+	// animationEasing; animationStagger delays each category for a left-to-right cascade.
 	const fullH = (d) => Math.abs(d.pyBase - d.pyTop);
+	const delayFor = (d) => animationStagger * d.categoryIndex;
+	const maxDelay = animationStagger * Math.max(0, categories.length - 1);
 	if (animate && typeof requestAnimationFrame === 'function') {
 		groups.each(function (d) { paintGroup(select(this), d, 0); });
 		const now = () => (typeof performance !== 'undefined' && performance.now ? performance.now() : new Date().getTime());
 		const t0 = now();
 		const tick = () => {
-			const k = easeCubicOut(Math.min(1, (now() - t0) / animationDuration));
-			groups.each(function (d) { paintGroup(select(this), d, fullH(d) * k); });
-			if (k < 1) requestAnimationFrame(tick);
+			const elapsed = now() - t0;
+			groups.each(function (d) {
+				const k = easeFn(Math.max(0, Math.min(1, (elapsed - delayFor(d)) / animationDuration)));
+				paintGroup(select(this), d, fullH(d) * k);
+			});
+			if (elapsed < animationDuration + maxDelay) requestAnimationFrame(tick);
 		};
 		requestAnimationFrame(tick);
 	} else {
@@ -681,28 +771,76 @@ export function drawChart(container, props, dispatch) {
 	}
 
 	// ----- value labels -----
-	if (showValueLabels) {
+	if (showValueLabels && valueLabelPosition !== 'none') {
+		const above = valueLabelPosition === 'above';
+		const fontPx = Math.max(9, labelFontSize - 1);
+		const gap = 4;
+		// 'inside' keeps labels centered in each segment (skip ones too short to fit);
+		// 'above' places them just past the bar's value end (every non-zero bar).
+		const data = above
+			? bars.filter((b) => b.value !== 0)
+			: bars.filter((b) => b.value !== 0 && Math.abs(b.pyBase - b.pyTop) >= labelFontSize + 2);
+		// 'above' geometry: sit just beyond the value end in the grow direction, nudged
+		// out past the 3D extrusion. Inside geometry centers on the segment's front face.
+		const aboveX = (d) => {
+			if (horizontal) {
+				const end = d.value >= 0 ? Math.max(d.pyBase, d.pyTop) : Math.min(d.pyBase, d.pyTop);
+				return end + (d.value >= 0 ? 1 : -1) * (gap + (bar3D ? depthFor(d) : 0));
+			}
+			return d.bx + d.bw / 2 + (bar3D ? depthFor(d) / 2 : 0);
+		};
+		const aboveY = (d) => {
+			if (horizontal) return d.bx + d.bw / 2 - (bar3D ? depthFor(d) / 2 : 0);
+			const end = d.value >= 0 ? Math.min(d.pyBase, d.pyTop) : Math.max(d.pyBase, d.pyTop);
+			return end + (d.value >= 0 ? -1 : 1) * (gap + (bar3D ? depthFor(d) : 0));
+		};
 		const labels = plot.append('g').attr('class', 'cc-value-labels')
 			.selectAll('text')
-			// skip segments too short to hold the text (incl. ones truncated by the max)
-			.data(bars.filter((b) => b.value !== 0 && Math.abs(b.pyBase - b.pyTop) >= labelFontSize + 2))
+			.data(data)
 			.join('text')
-			// centered inside each segment's front face so stacked values stay in their own
-			// block; the category axis and value axis swap with orientation.
-			.attr('x', (d) => (horizontal ? (d.pyBase + d.pyTop) / 2 : d.bx + d.bw / 2))
-			.attr('y', (d) => (horizontal ? d.bx + d.bw / 2 : (d.pyBase + d.pyTop) / 2))
-			.attr('text-anchor', 'middle')
-			.attr('dominant-baseline', 'central')
-			.attr('fill', (d) => autoContrast(d.color))
-			.style('font-size', `${Math.max(9, labelFontSize - 1)}px`)
+			.attr('x', (d) => (above ? aboveX(d) : (horizontal ? (d.pyBase + d.pyTop) / 2 : d.bx + d.bw / 2)))
+			.attr('y', (d) => (above ? aboveY(d) : (horizontal ? d.bx + d.bw / 2 : (d.pyBase + d.pyTop) / 2)))
+			.attr('text-anchor', (d) => (above ? (horizontal ? (d.value >= 0 ? 'start' : 'end') : 'middle') : 'middle'))
+			.attr('dominant-baseline', (d) => (above ? (horizontal ? 'central' : (d.value >= 0 ? 'auto' : 'hanging')) : 'central'))
+			.attr('fill', (d) => (above ? axisTextColor : autoContrast(d.color)))
+			.style('font-size', `${fontPx}px`)
 			.style('font-weight', '600')
 			.style('pointer-events', 'none')
 			.style('opacity', animate ? 0 : 1)
 			.text((d) => fmt(d.value));
-		// fade labels in after the bars finish growing (CSS transition, no d3-transition)
+		// fade labels in after the bars finish growing (incl. the stagger tail)
 		if (animate && typeof requestAnimationFrame === 'function') {
-			labels.style('transition', `opacity 300ms ease ${Math.round(animationDuration * 0.5)}ms`);
+			labels.style('transition', `opacity 300ms ease ${Math.round((animationDuration + maxDelay) * 0.5)}ms`);
 			requestAnimationFrame(() => labels.style('opacity', 1));
+		}
+	}
+
+	// ----- reference line -----
+	// Target/average threshold across the plot at the value pixel y(refValue). Drawn
+	// after the bars/labels so it overlays them; reuses the value scale (a value outside
+	// the domain clamps to the axis edge).
+	if (refValue !== null && Number.isFinite(refValue)) {
+		const p = y(refValue);
+		const refG = plot.append('g').attr('class', 'cc-refline').style('pointer-events', 'none');
+		refG.append('line')
+			.attr('x1', horizontal ? p : 0)
+			.attr('y1', horizontal ? 0 : p)
+			.attr('x2', horizontal ? p : innerW)
+			.attr('y2', horizontal ? innerH : p)
+			.attr('stroke', refColor)
+			.attr('stroke-width', 1.5)
+			.attr('stroke-dasharray', '6,4');
+		if (refLabel) {
+			refG.append('text')
+				.attr('x', horizontal ? p + 4 : innerW - 4)
+				.attr('y', horizontal ? 2 : p - 4)
+				.attr('text-anchor', horizontal ? 'middle' : 'end')
+				.attr('dominant-baseline', horizontal ? 'hanging' : 'auto')
+				.attr('fill', refColor)
+				.style('font-size', `${axisFontSize}px`)
+				.style('font-family', axisFontFamily)
+				.style('font-weight', '600')
+				.text(refLabel);
 		}
 	}
 
@@ -752,23 +890,46 @@ export function drawChart(container, props, dispatch) {
 	}
 
 	// ----- legend -----
+	// Binds to allSeries (so hidden series still show, dimmed/struck-through to toggle
+	// back). When legendInteractive, clicking an item hides/shows that series and the
+	// chart redraws with the value scale recomputed for the remaining series.
 	if (showLegend) {
+		const isHidden = (s) => hidden.has(nameOf(s));
 		const legend = svg.append('g').attr('class', 'cc-legend');
-		const items = legend.selectAll('g').data(series).join('g').style('cursor', 'default');
+		const items = legend.selectAll('g').data(allSeries).join('g')
+			.style('cursor', legendInteractive ? 'pointer' : 'default')
+			.style('opacity', (s) => (isHidden(s) ? 0.4 : 1));
 		items.append('rect')
 			.attr('width', 12).attr('height', 12).attr('rx', 2)
 			.attr('y', -legendFontSize + 2)
-			.attr('fill', (s, i) => colorFor(s, i));
+			.attr('fill', (s) => colorFor(s, s._idx));
 		items.append('text')
 			.attr('x', 18).attr('y', 0)
 			.attr('dominant-baseline', 'middle')
 			.attr('fill', axisTextColor)
 			.style('font-size', `${legendFontSize}px`)
-			.text((s, i) => seriesNames[i]);
+			.style('text-decoration', (s) => (isHidden(s) ? 'line-through' : 'none'))
+			.text((s) => nameOf(s));
+
+		if (legendInteractive) {
+			items.on('click', function (event, s) {
+				event.stopPropagation(); // don't also fire CHART_CLICKED
+				const nm = nameOf(s);
+				if (hidden.has(nm)) {
+					hidden.delete(nm);
+				} else if (allSeries.length - hidden.size > 1) { // keep at least one visible
+					hidden.add(nm);
+				} else {
+					return;
+				}
+				// redraw with the updated hidden set; animation off so the toggle is instant
+				drawChart(container, Object.assign({}, props, { animate: false }), dispatch);
+			});
+		}
 
 		if (legendPosition === 'right') {
 			// vertically center the legend block against the plot area
-			const totalH = series.length * legendRowH;
+			const totalH = allSeries.length * legendRowH;
 			let yy = margin.top + Math.max(0, (innerH - totalH) / 2);
 			items.attr('transform', () => {
 				const tr = `translate(${width - margin.right + 12},${yy + legendFontSize})`;
@@ -778,7 +939,7 @@ export function drawChart(container, props, dispatch) {
 		} else {
 			// horizontal row, centered under the plot area (not the full svg width,
 			// whose unequal left/right margins would push it off-center)
-			const widths = seriesNames.map(legendItemW);
+			const widths = allSeriesNames.map(legendItemW);
 			const totalW = widths.reduce((a, b) => a + b, 0);
 			let xx = Math.max(8, margin.left + innerW / 2 - totalW / 2);
 			const yPos = legendPosition === 'top' ? legendFontSize + 4 : bottomCursor + legendFontSize;

@@ -120,6 +120,16 @@ createCustomElement('x-1295779-column-chart-uic', {
 		labelFontSize: { default: 12 },
 		animate: { default: true },
 		animationDuration: { default: 800 },
+		animationEasing: { default: 'cubicOut' },
+		animationStagger: { default: 0 },
+		barOpacity: { default: 1 },
+		minBarHeight: { default: 0 },
+		valueLabelPosition: { default: 'inside' },
+		showXGridlines: { default: false },
+		legendInteractive: { default: false },
+		referenceLineValue: { default: '' },
+		referenceLineColor: { default: '#ef4444' },
+		referenceLineLabel: { default: '' },
 		chartHeight: { default: 360 }
 	},
 	actionHandlers: {
