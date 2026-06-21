@@ -111,6 +111,21 @@
             ]
           }
         },
+        {
+          "name": "stackOffset",
+          "label": "Data · Stack offset",
+          "description": "Only applies when Column grouping is Stacked. None = raw totals; 100% = every column normalized to full height (y-axis shows %); Diverging = negatives drop below the zero line, positives rise above.",
+          "fieldType": "choice",
+          "defaultValue": "none",
+          "typeMetadata": {
+            "variant": "dropdown",
+            "choices": [
+              { "label": "None", "value": "none" },
+              { "label": "100% (expand)", "value": "expand" },
+              { "label": "Diverging (+/-)", "value": "diverging" }
+            ]
+          }
+        },
 
         {
           "name": "chartHeight",
@@ -258,6 +273,21 @@
           "fieldType": "string",
           "defaultValue": "#e5e7eb"
         },
+        {
+          "name": "yScaleType",
+          "label": "Y-axis · Scale type",
+          "description": "Linear (default), Logarithmic (for data spanning orders of magnitude; ignores zero/negatives and is best with grouped data), or Square root.",
+          "fieldType": "choice",
+          "defaultValue": "linear",
+          "typeMetadata": {
+            "variant": "dropdown",
+            "choices": [
+              { "label": "Linear", "value": "linear" },
+              { "label": "Logarithmic", "value": "log" },
+              { "label": "Square root", "value": "sqrt" }
+            ]
+          }
+        },
 
         {
           "name": "xAxisLabel",
@@ -265,6 +295,27 @@
           "description": "Caption beneath the x-axis. Leave blank to hide.",
           "fieldType": "string",
           "defaultValue": ""
+        },
+        {
+          "name": "xTickRotation",
+          "label": "X-axis · Tick label rotation",
+          "description": "Rotate category-axis tick labels by this many degrees (e.g. -45 or -90) so long or dense labels don't overlap. 0 = horizontal. The chart auto-reserves space for tilted labels.",
+          "fieldType": "number",
+          "defaultValue": 0
+        },
+        {
+          "name": "xTickInterval",
+          "label": "X-axis · Tick label interval",
+          "description": "Show every Nth category label (1 = all, 2 = every other, …). Bars are unaffected; only labels thin out.",
+          "fieldType": "number",
+          "defaultValue": 1
+        },
+        {
+          "name": "maxXTicks",
+          "label": "X-axis · Max tick labels",
+          "description": "Cap the number of category labels shown; the chart auto-thins to roughly this many when there are more categories. 0 = no cap.",
+          "fieldType": "number",
+          "defaultValue": 0
         },
 
         {
@@ -399,9 +450,30 @@
           "defaultValue": true
         },
         {
+          "name": "colorScheme",
+          "label": "Colors · Color scheme",
+          "description": "Pick a built-in D3 categorical scheme to color the series, or Custom to use the Color palette below. Per-series colors in the data still win when 'Use per-series colors' is on.",
+          "fieldType": "choice",
+          "defaultValue": "custom",
+          "typeMetadata": {
+            "variant": "dropdown",
+            "choices": [
+              { "label": "Custom (use palette)", "value": "custom" },
+              { "label": "Category10", "value": "category10" },
+              { "label": "Tableau10", "value": "tableau10" },
+              { "label": "Set2", "value": "set2" },
+              { "label": "Set3", "value": "set3" },
+              { "label": "Paired", "value": "paired" },
+              { "label": "Dark2", "value": "dark2" },
+              { "label": "Pastel1", "value": "pastel1" },
+              { "label": "Accent", "value": "accent" }
+            ]
+          }
+        },
+        {
           "name": "colorPalette",
           "label": "Colors · Color palette",
-          "description": "JSON array of CSS colors used per series when 'Use per-series colors' is off, e.g. [\"#2E93fA\",\"#66DA26\"].",
+          "description": "JSON array of CSS colors used per series when 'Use per-series colors' is off and Color scheme is Custom, e.g. [\"#2E93fA\",\"#66DA26\"].",
           "fieldType": "json"
         }
       ],

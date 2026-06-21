@@ -15,11 +15,28 @@
  * them as event handlers in UI Builder.
  */
 import { select } from 'd3-selection';
-import { scaleBand, scaleLinear } from 'd3-scale';
+import { scaleBand, scaleLinear, scaleLog, scaleSqrt } from 'd3-scale';
+import {
+	schemeCategory10, schemeTableau10, schemeSet2, schemeSet3,
+	schemePaired, schemeDark2, schemePastel1, schemeAccent
+} from 'd3-scale-chromatic';
 import { axisBottom, axisLeft } from 'd3-axis';
 import { format } from 'd3-format';
 import { color } from 'd3-color';
 import { easeCubicOut } from 'd3-ease';
+
+// Named categorical schemes selectable via the `colorScheme` property. Each is a
+// plain array of CSS colors (imported by name so the prod build tree-shakes cleanly).
+const COLOR_SCHEMES = {
+	category10: schemeCategory10,
+	tableau10: schemeTableau10,
+	set2: schemeSet2,
+	set3: schemeSet3,
+	paired: schemePaired,
+	dark2: schemeDark2,
+	pastel1: schemePastel1,
+	accent: schemeAccent
+};
 
 const num = (v, fallback) => {
 	const n = typeof v === 'string' ? parseFloat(v) : v;
@@ -75,9 +92,19 @@ export function drawChart(container, props, dispatch) {
 	// (scaleLinear); orientation decides which is which.
 	const orientation = props.orientation === 'horizontal' ? 'horizontal' : 'vertical';
 	const horizontal = orientation === 'horizontal';
+	// value-axis scale type; stacked-only offset; category-axis label thinning/rotation
+	const yScaleType = ['linear', 'log', 'sqrt'].includes(props.yScaleType) ? props.yScaleType : 'linear';
+	const stackOffset = ['none', 'expand', 'diverging'].includes(props.stackOffset) ? props.stackOffset : 'none';
+	const colorScheme = props.colorScheme || 'custom';
+	const xTickRotation = Math.max(-90, Math.min(90, num(props.xTickRotation, 0)));
+	const xTickInterval = Math.max(1, Math.round(num(props.xTickInterval, 1)));
+	const maxXTicks = Math.max(0, Math.round(num(props.maxXTicks, 0))); // 0 = no cap
 	const palette = Array.isArray(props.colorPalette) && props.colorPalette.length
 		? props.colorPalette
 		: ['#2E93fA', '#66DA26', '#546E7A', '#E91E63', '#FF9800', '#9C27B0'];
+	// A named scheme only *fills the palette*: explicit per-series data colors still win
+	// (via colorFor's useSeriesColors guard); a scheme just replaces the fallback list.
+	const effectivePalette = (colorScheme !== 'custom' && COLOR_SCHEMES[colorScheme]) ? COLOR_SCHEMES[colorScheme] : palette;
 	const useSeriesColors = props.useSeriesColors !== false;
 	const columnPadding = Math.max(0, Math.min(0.95, num(props.columnPadding, 0.2)));
 	const groupPadding = Math.max(0, Math.min(0.5, num(props.groupPadding, 0.05)));
@@ -126,9 +153,13 @@ export function drawChart(container, props, dispatch) {
 		try { return format(spec); } catch (e) { return (n) => `${n}`; }
 	};
 	const fmt = makeFmt(props.valueLabelFormat);
-	const yFmt = makeFmt(props.yAxisFormat);
+	// 100%-normalized stacks read as percentages, so default the y-axis ticks to a
+	// percent format when the author hasn't set one explicitly.
+	const yFmt = (groupMode === 'stacked' && stackOffset === 'expand' && isBlank(props.yAxisFormat))
+		? format('.0%')
+		: makeFmt(props.yAxisFormat);
 
-	const colorFor = (s, i) => (useSeriesColors && s && s.color ? s.color : palette[i % palette.length]);
+	const colorFor = (s, i) => (useSeriesColors && s && s.color ? s.color : effectivePalette[i % effectivePalette.length]);
 	const hoverFill = (base) => {
 		if (hoverColor) return hoverColor;
 		const c = color(base);
@@ -213,12 +244,18 @@ export function drawChart(container, props, dispatch) {
 
 	// ----- layout margins (depend on which decorations are shown) -----
 	const margin = { top: 12, right: 16, bottom: Math.max(24, axisFontSize + 12), left: Math.max(48, axisFontSize * 3) };
+	const longestCat = categories.reduce((m, c) => Math.max(m, String(c).length), 0);
 	if (horizontal) {
 		// category labels move to the left axis and can be long, so size the left
 		// margin to the widest label (capped) instead of the value-tick width.
-		const longestCat = categories.reduce((m, c) => Math.max(m, String(c).length), 0);
 		margin.left = Math.max(48, Math.min(220, Math.round(longestCat * axisFontSize * 0.6) + 18));
 	}
+	// Rotated category labels need extra room along the axis they sit on: estimate the
+	// vertical footprint of the tilted text and reserve it (bottom for columns).
+	const rotatedExtent = xTickRotation
+		? Math.round(Math.sin(Math.abs(xTickRotation) * Math.PI / 180) * longestCat * axisFontSize * 0.6)
+		: 0;
+	if (rotatedExtent && !horizontal) margin.bottom += rotatedExtent;
 	if (chartTitle) margin.top += titleFontSize + 22; // extra breathing room below the title
 	// xAxisLabel titles the category axis, yAxisLabel the value axis. Each follows its
 	// axis to the bottom or left depending on orientation.
@@ -247,14 +284,35 @@ export function drawChart(container, props, dispatch) {
 	const x0 = scaleBand().domain(categories).range([0, catExtent]).paddingInner(columnPadding).paddingOuter(columnPadding / 2);
 	const x1 = scaleBand().domain(seriesNames).range([0, x0.bandwidth()]).padding(groupPadding);
 
-	// y domain
+	// ----- value domain -----
+	// expand (100%) always normalizes to [0,1]; diverging needs separate positive and
+	// negative extents; otherwise track the natural min/max. minPos feeds the log scale,
+	// which has no zero and must floor on the smallest positive value.
+	const expandMode = groupMode === 'stacked' && stackOffset === 'expand';
 	let dataMin = 0;
 	let dataMax = 0;
+	let minPos = Infinity;
+	series.forEach((s) => s.data.forEach((d) => {
+		const v = num(d.value, 0);
+		if (v > 0 && v < minPos) minPos = v;
+	}));
 	if (groupMode === 'stacked') {
-		categories.forEach((label) => {
-			const total = series.reduce((acc, s) => acc + Math.max(0, valueByCat(s, label)), 0);
-			dataMax = Math.max(dataMax, total);
-		});
+		if (expandMode) {
+			dataMax = 1;
+		} else if (stackOffset === 'diverging') {
+			categories.forEach((label) => {
+				let pos = 0;
+				let neg = 0;
+				series.forEach((s) => { const v = valueByCat(s, label); if (v >= 0) pos += v; else neg += v; });
+				dataMax = Math.max(dataMax, pos);
+				dataMin = Math.min(dataMin, neg);
+			});
+		} else {
+			categories.forEach((label) => {
+				const total = series.reduce((acc, s) => acc + Math.max(0, valueByCat(s, label)), 0);
+				dataMax = Math.max(dataMax, total);
+			});
+		}
 	} else {
 		series.forEach((s) => s.data.forEach((d) => {
 			const v = num(d.value, 0);
@@ -262,14 +320,33 @@ export function drawChart(container, props, dispatch) {
 			dataMax = Math.max(dataMax, v);
 		}));
 	}
-	const yLo = isBlank(props.yMin) ? Math.min(0, dataMin) : num(props.yMin, Math.min(0, dataMin));
-	const yHi = isBlank(props.yMax) ? dataMax || 1 : num(props.yMax, dataMax || 1);
-	// clamp(true) truncates bars at the axis bounds instead of letting them run off
-	// the chart when a value exceeds the configured maximum.
-	const y = scaleLinear().domain([yLo, yHi]).range(horizontal ? [0, innerW] : [innerH, 0]).clamp(true);
-	// Only round the domain to "nice" values when the bound is automatic; respect an
-	// explicitly configured min/max exactly so the truncation lands on the set value.
-	if (isBlank(props.yMin) && isBlank(props.yMax)) y.nice(yTickCount);
+	const yLo = expandMode ? 0 : (isBlank(props.yMin) ? Math.min(0, dataMin) : num(props.yMin, Math.min(0, dataMin)));
+	const yHi = expandMode ? 1 : (isBlank(props.yMax) ? dataMax || 1 : num(props.yMax, dataMax || 1));
+
+	// ----- value scale (linear | log | sqrt) -----
+	// valBase = the data value the bars grow FROM (the visual baseline): 0 for linear/
+	// sqrt, the domain floor for log (which can't reach 0). clamp(true) truncates bars
+	// at the bounds; nice() only rounds when the bound is automatic.
+	const valRange = horizontal ? [0, innerW] : [innerH, 0];
+	const autoBounds = isBlank(props.yMin) && isBlank(props.yMax) && !expandMode;
+	let y;
+	let valBase;
+	if (yScaleType === 'log') {
+		const floor = Number.isFinite(minPos) ? minPos : 1;
+		const lo = isBlank(props.yMin) ? floor : Math.max(1e-6, num(props.yMin, floor));
+		const hi = isBlank(props.yMax) ? (dataMax || 10) : num(props.yMax, dataMax || 10);
+		y = scaleLog().domain([lo, Math.max(hi, lo * 10)]).range(valRange).clamp(true);
+		if (autoBounds) y.nice();
+		valBase = y.domain()[0]; // bars sit on the (post-nice) domain floor
+	} else if (yScaleType === 'sqrt') {
+		y = scaleSqrt().domain([yLo, yHi]).range(valRange).clamp(true);
+		if (autoBounds) y.nice(yTickCount);
+		valBase = Math.max(yLo, 0);
+	} else {
+		y = scaleLinear().domain([yLo, yHi]).range(valRange).clamp(true);
+		if (autoBounds) y.nice(yTickCount);
+		valBase = Math.max(yLo, 0);
+	}
 
 	// ----- gridlines -----
 	// Gridlines run perpendicular to the value axis: horizontal lines for columns,
@@ -291,14 +368,21 @@ export function drawChart(container, props, dispatch) {
 	// code is orientation-agnostic). Vertical: categories on the bottom at the value
 	// baseline, values on the left. Horizontal: categories on the left at the value
 	// baseline, values along the bottom.
-	const valZero = y(Math.max(yLo, 0));
+	const valZero = y(valBase);
+	// Thin the category labels: show every Nth (xTickInterval), and/or auto-thin so no
+	// more than maxXTicks remain. Only the labels/ticks drop out — every bar still draws.
+	let catInterval = xTickInterval;
+	if (maxXTicks > 0 && categories.length > maxXTicks) {
+		catInterval = Math.max(catInterval, Math.ceil(categories.length / maxXTicks));
+	}
+	const catTickVals = catInterval > 1 ? categories.filter((c, i) => i % catInterval === 0) : categories;
 	let xAxis;
 	let yAxis;
 	if (horizontal) {
 		xAxis = plot.append('g')
 			.attr('class', 'cc-axis cc-axis-x')
 			.attr('transform', `translate(${valZero},0)`)
-			.call(axisLeft(x0).tickSizeOuter(0));
+			.call(axisLeft(x0).tickValues(catTickVals).tickSizeOuter(0));
 		yAxis = plot.append('g')
 			.attr('class', 'cc-axis cc-axis-y')
 			.attr('transform', `translate(0,${innerH})`)
@@ -307,7 +391,7 @@ export function drawChart(container, props, dispatch) {
 		xAxis = plot.append('g')
 			.attr('class', 'cc-axis cc-axis-x')
 			.attr('transform', `translate(0,${valZero})`)
-			.call(axisBottom(x0).tickSizeOuter(0));
+			.call(axisBottom(x0).tickValues(catTickVals).tickSizeOuter(0));
 		yAxis = plot.append('g')
 			.attr('class', 'cc-axis cc-axis-y')
 			.call(axisLeft(y).ticks(yTickCount).tickFormat(yFmt));
@@ -321,11 +405,28 @@ export function drawChart(container, props, dispatch) {
 			.style('font-family', axisFontFamily);
 	});
 
+	// Rotate the category-axis labels so long/dense labels don't collide. Anchor the
+	// text to the end nearest the axis so it pivots cleanly off each tick.
+	if (xTickRotation !== 0) {
+		const anchor = xTickRotation < 0 ? 'end' : (xTickRotation > 0 ? 'start' : 'middle');
+		xAxis.selectAll('text')
+			.attr('transform', `rotate(${xTickRotation})`)
+			.style('text-anchor', anchor)
+			.attr('dx', horizontal ? null : (xTickRotation < 0 ? '-0.4em' : (xTickRotation > 0 ? '0.4em' : null)))
+			.attr('dy', horizontal ? '0.32em' : (Math.abs(xTickRotation) >= 60 ? '0.3em' : '0.6em'));
+	}
+
 	// ----- build flat bar descriptors (unifies grouped & stacked) -----
-	const yBase = y(Math.max(yLo, 0)); // baseline pixel
+	const yBase = y(valBase); // baseline pixel
 	const bars = [];
 	categories.forEach((label, ci) => {
-		let cum = 0;
+		let cum = 0;    // running total for 'none' / 'expand' offsets
+		let posCum = 0; // diverging: positive segments stack up from 0
+		let negCum = 0; // diverging: negative segments stack down from 0
+		// expand needs the category's signed total up front to normalize each segment
+		const expandTotal = expandMode
+			? (series.reduce((acc, s) => acc + valueByCat(s, label), 0) || 1)
+			: 1;
 		series.forEach((s, si) => {
 			const datum = s.data.find((d) => d.label === label) || {};
 			const value = valueByCat(s, label);
@@ -336,13 +437,23 @@ export function drawChart(container, props, dispatch) {
 			if (groupMode === 'stacked') {
 				bx = x0(label);
 				bw = x0.bandwidth();
-				y0 = cum;
-				y1 = cum + value;
-				cum = y1;
+				if (expandMode) {
+					const frac = value / expandTotal;
+					y0 = cum;
+					y1 = cum + frac;
+					cum = y1;
+				} else if (stackOffset === 'diverging') {
+					if (value >= 0) { y0 = posCum; y1 = posCum + value; posCum = y1; }
+					else { y0 = negCum; y1 = negCum + value; negCum = y1; }
+				} else {
+					y0 = cum;
+					y1 = cum + value;
+					cum = y1;
+				}
 			} else {
 				bx = x0(label) + x1(s.name || `Series ${si + 1}`);
 				bw = x1.bandwidth();
-				y0 = 0;
+				y0 = valBase;
 				y1 = value;
 			}
 			bars.push({
@@ -614,7 +725,7 @@ export function drawChart(container, props, dispatch) {
 	// horizontal → categories left / values bottom. bottomCursor walks down the area
 	// beneath the plot (past the value/category tick labels) before the bottom legend.
 	const plotBottom = margin.top + innerH;
-	let bottomCursor = plotBottom + Math.max(20, axisFontSize + 8);
+	let bottomCursor = plotBottom + Math.max(20, axisFontSize + 8) + (horizontal ? 0 : rotatedExtent);
 	const bottomTitle = horizontal ? yAxisLabel : xAxisLabel;
 	const leftTitle = horizontal ? xAxisLabel : yAxisLabel;
 	if (bottomTitle) {
